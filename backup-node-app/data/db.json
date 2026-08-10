@@ -1,0 +1,49 @@
+{
+  "employees": [
+    {
+      "id": "emp-1",
+      "name": "Budi Santoso",
+      "nip": "19920801",
+      "pin": "1234"
+    },
+    {
+      "id": "emp-2",
+      "name": "Siti Rahma",
+      "nip": "19950412",
+      "pin": "5678"
+    },
+    {
+      "id": "emp-3",
+      "name": "Joko Widodo",
+      "nip": "19901130",
+      "pin": "0000"
+    }
+  ],
+  "attendance": [
+    {
+      "id": "att-msk5zeq7-qhei",
+      "employeeId": "emp-msk5zepq-zsc6",
+      "employeeName": "Test Karyawan",
+      "date": "2026-08-08",
+      "type": "masuk",
+      "time": "08:00:00",
+      "selfieUrl": "uploads/selfies/test.jpg",
+      "coords": {
+        "lat": -6.2,
+        "lng": 106.816666
+      },
+      "distance": 12,
+      "ip": "127.0.0.1",
+      "status": "Success"
+    }
+  ],
+  "settings": {
+    "officeName": "Kantor Pusat",
+    "officeLat": -6.2,
+    "officeLng": 106.816666,
+    "officeRadius": 100,
+    "officeIp": "127.0.0.1",
+    "enableGps": false,
+    "enableIp": false
+  }
+}

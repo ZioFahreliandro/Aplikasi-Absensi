@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Aplikasi Absensi Selfie</title>
+  <!-- CSRF Token for Laravel Security -->
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Lucide Icons CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- CSS Stylesheet -->
+  <link rel="stylesheet" href="{{ asset('css/style.css') }}">
+</head>
+<body>
+
+  <!-- Top Navigation Bar -->
+  <header class="app-header">
+    <div class="header-logo">
+      <div class="logo-icon">
+        <i data-lucide="shield-check"></i>
+      </div>
+      <div class="logo-text">
+        <h1>Absen<span>Go</span></h1>
+        <p>Sistem Absensi Kehadiran Kantor (Laravel)</p>
+      </div>
+    </div>
+    <nav class="header-nav">
+      <button id="nav-kiosk" class="nav-btn active">
+        <i data-lucide="camera"></i> Kiosk Absen
+      </button>
+      <button id="nav-admin" class="nav-btn">
+        <i data-lucide="layout-dashboard"></i> Panel Admin
+      </button>
+    </nav>
+  </header>
+
+  <main class="app-container">
+    
+    <!-- 1. KIOSK ABSEN VIEW -->
+    <section id="view-kiosk" class="view-section active">
+      <div class="kiosk-grid">
+        
+        <!-- Left Side: Interactive Attendance Form & Clock -->
+        <div class="kiosk-left">
+          <!-- Premium Clock Card -->
+          <div class="card clock-card">
+            <div class="clock-icon">
+              <i data-lucide="clock"></i>
+            </div>
+            <div>
+              <div id="live-clock" class="time-display">00:00:00</div>
+              <div id="live-date" class="date-display">Hari ini, Tanggal Bulan Tahun</div>
+            </div>
+          </div>
+
+          <!-- Attendance Action Card -->
+          <div class="card attendance-card">
+            <h2 class="section-title">Formulir Absensi</h2>
+            <p class="section-subtitle">Ambil foto selfie untuk melakukan absensi.</p>
+            
+            <form id="attendance-form" class="app-form">
+              <!-- Clock In/Out buttons -->
+              <div class="attendance-actions">
+                <button type="button" id="btn-clock-in" class="action-btn clock-in-btn">
+                  <i data-lucide="log-in"></i> Absen Masuk
+                </button>
+                <button type="button" id="btn-clock-out" class="action-btn clock-out-btn">
+                  <i data-lucide="log-out"></i> Absen Pulang
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <!-- Right Side: Live Selfie Preview Frame -->
+        <div class="kiosk-right">
+          <div class="card camera-card">
+            <div class="camera-header">
+              <h2>Kamera Pengenal</h2>
+              <span id="camera-status-badge" class="badge-status offline">OFFLINE</span>
+            </div>
+            
+            <div class="camera-frame-container">
+              <div class="camera-circle-wrapper">
+                <video id="webcam" autoplay playsinline muted></video>
+                <canvas id="photo-canvas" style="display: none;"></canvas>
+                <div id="camera-placeholder" class="camera-placeholder">
+                  <i data-lucide="camera-off" class="placeholder-icon"></i>
+                  <p>Kamera Belum Aktif</p>
+                  <button id="btn-init-camera" class="btn-primary-small">
+                    <i data-lucide="video"></i> Aktifkan Kamera
+                  </button>
+                </div>
+                <div class="face-overlay-guide"></div>
+              </div>
+              <p class="camera-tip">Posisikan wajah Anda tepat di dalam lingkaran</p>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- 2. ADMIN DASHBOARD VIEW -->
+    <section id="view-admin" class="view-section">
+      <div class="admin-layout">
+        
+        <!-- Sidebar Navigation for Admin Sections -->
+        <aside class="admin-sidebar">
+          <button id="tab-recap" class="tab-btn active">
+            <i data-lucide="file-text"></i> Rekap Absensi
+          </button>
+          <button id="tab-employees" class="tab-btn">
+            <i data-lucide="users"></i> Kelola Karyawan
+          </button>
+          <button id="tab-settings" class="tab-btn">
+            <i data-lucide="settings"></i> Pengaturan Kantor
+          </button>
+        </aside>
+
+        <!-- Admin Content Area -->
+        <div class="admin-content">
+          
+          <!-- Sub-tab 1: Rekap Absensi -->
+          <div id="sub-view-recap" class="sub-view active">
+            <div class="sub-view-header">
+              <div>
+                <h2>Rekap Laporan Kehadiran</h2>
+                <p>Tinjau dan ekspor laporan kehadiran bulanan karyawan.</p>
+              </div>
+              <div class="recap-filters">
+                <div class="filter-group">
+                  <label for="filter-month">Pilih Bulan:</label>
+                  <input type="month" id="filter-month" class="input-field">
+                </div>
+                <button id="btn-export-csv" class="btn-success">
+                  <i data-lucide="download"></i> Ekspor CSV
+                </button>
+              </div>
+            </div>
+
+            <!-- Stats Overview Cards -->
+            <div class="stats-grid">
+              <div class="card stat-card">
+                <div class="stat-icon info">
+                  <i data-lucide="users"></i>
+                </div>
+                <div>
+                  <h3 id="stat-total-emp">0</h3>
+                  <p>Total Karyawan</p>
+                </div>
+              </div>
+              <div class="card stat-card">
+                <div class="stat-icon success">
+                  <i data-lucide="check-circle-2"></i>
+                </div>
+                <div>
+                  <h3 id="stat-present-today">0</h3>
+                  <p>Hadir Hari Ini</p>
+                </div>
+              </div>
+              <div class="card stat-card">
+                <div class="stat-icon warning">
+                  <i data-lucide="alert-triangle"></i>
+                </div>
+                <div>
+                  <h3 id="stat-outside-today">0</h3>
+                  <p>Absen di Luar Radius</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Table Card -->
+            <div class="card table-card-wrapper">
+              <div class="table-responsive">
+                <table id="recap-table" class="app-table">
+                  <thead>
+                    <tr>
+                      <th>Nama Karyawan</th>
+                      <th>Tanggal</th>
+                      <th>Waktu</th>
+                      <th>Tipe</th>
+                      <th>Selfie</th>
+                      <th>Lokasi (GPS)</th>
+                      <th>IP Jaringan</th>
+                      <th>Status Validasi</th>
+                    </tr>
+                  </thead>
+                  <tbody id="recap-table-body">
+                    <!-- Dynamic rows here -->
+                    <tr>
+                      <td colspan="8" class="text-center text-muted">Memuat data absensi...</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- Sub-tab 2: Kelola Karyawan -->
+          <div id="sub-view-employees" class="sub-view">
+            <div class="sub-view-header">
+              <div>
+                <h2>Kelola Daftar Karyawan</h2>
+                <p>Tambah, ubah, atau hapus karyawan dari sistem absensi.</p>
+              </div>
+            </div>
+
+            <div class="employee-grid">
+              <!-- Employee Form Card -->
+              <div class="card employee-form-card">
+                <h3 id="employee-form-title">Tambah Karyawan Baru</h3>
+                <form id="employee-form" class="app-form">
+                  <input type="hidden" id="employee-id">
+                  
+                  <div class="form-group">
+                    <label for="emp-name">Nama Lengkap</label>
+                    <input type="text" id="emp-name" class="input-field" placeholder="Contoh: Ahmad Subardjo" required>
+                  </div>
+                  
+                  <div class="form-group">
+                    <label for="emp-nip">NIP / Nomor Induk Pegawai</label>
+                    <input type="text" id="emp-nip" class="input-field" placeholder="Contoh: 19960205" required>
+                  </div>
+                  
+                  <div class="form-group">
+                    <label for="emp-pin">PIN Absensi (4 Angka)</label>
+                    <input type="password" id="emp-pin" class="input-field" placeholder="Contoh: 1234" maxlength="4" pattern="[0-9]{4}" required inputmode="numeric">
+                  </div>
+                  
+                  <div class="form-actions">
+                    <button type="submit" id="btn-submit-employee" class="btn-primary">
+                      <i data-lucide="plus-circle"></i> Simpan Karyawan
+                    </button>
+                    <button type="button" id="btn-cancel-edit" class="btn-secondary" style="display: none;">
+                      Batal
+                    </button>
+                  </div>
+                </form>
+              </div>
+
+              <!-- Employee List Card -->
+              <div class="card employee-list-card">
+                <h3>Daftar Karyawan Terdaftar</h3>
+                <div class="table-responsive">
+                  <table class="app-table">
+                    <thead>
+                      <tr>
+                        <th>NIP</th>
+                        <th>Nama</th>
+                        <th>PIN</th>
+                        <th>Aksi</th>
+                      </tr>
+                    </thead>
+                    <tbody id="employee-table-body">
+                      <!-- Dynamic list of employees -->
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Sub-tab 3: Pengaturan Kantor -->
+          <div id="sub-view-settings" class="sub-view">
+            <div class="sub-view-header">
+              <div>
+                <h2>Pengaturan Lokasi & Jaringan Kantor</h2>
+                <p>Atur batas jangkauan GPS, koordinat kantor, dan IP address kantor yang diizinkan.</p>
+              </div>
+            </div>
+
+            <div class="settings-grid">
+              
+              <!-- Settings Form Card -->
+              <div class="card settings-form-card">
+                <h3>Konfigurasi Pembatasan Akses</h3>
+                <form id="settings-form" class="app-form">
+                  
+                  <div class="form-group">
+                    <label for="set-office-name">Nama Kantor / Lokasi</label>
+                    <input type="text" id="set-office-name" class="input-field" placeholder="Kantor Pusat" required>
+                  </div>
+
+                  <!-- Toggles -->
+                  <div class="settings-toggles">
+                    <div class="toggle-group">
+                      <div class="toggle-control">
+                        <label class="switch">
+                          <input type="checkbox" id="set-enable-gps">
+                          <span class="slider round"></span>
+                        </label>
+                        <div class="toggle-label-text">
+                          <span class="toggle-title">Batasi Berdasarkan GPS</span>
+                          <span class="toggle-desc">Hanya izinkan absen jika berada di radius koordinat kantor.</span>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div class="toggle-group">
+                      <div class="toggle-control">
+                        <label class="switch">
+                          <input type="checkbox" id="set-enable-ip">
+                          <span class="slider round"></span>
+                        </label>
+                        <div class="toggle-label-text">
+                          <span class="toggle-title">Batasi Berdasarkan IP Kantor</span>
+                          <span class="toggle-desc">Hanya izinkan absen dari jaringan internet WiFi kantor.</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <hr class="form-divider">
+
+                  <!-- GPS Config -->
+                  <h4 class="settings-section-title"><i data-lucide="map-pin"></i> Koordinat Geolocation</h4>
+                  
+                  <div class="form-row-2">
+                    <div class="form-group">
+                      <label for="set-office-lat">Latitude Kantor</label>
+                      <input type="number" id="set-office-lat" step="any" class="input-field" placeholder="-6.200000" required>
+                    </div>
+                    <div class="form-group">
+                      <label for="set-office-lng">Longitude Kantor</label>
+                      <input type="number" id="set-office-lng" step="any" class="input-field" placeholder="106.816666" required>
+                    </div>
+                  </div>
+
+                  <div class="form-group">
+                    <label for="set-office-radius">Radius Akses (Meter)</label>
+                    <input type="number" id="set-office-radius" class="input-field" placeholder="100" min="10" required>
+                  </div>
+
+                  <div class="helper-buttons">
+                    <button type="button" id="btn-get-current-coords" class="btn-outline-info">
+                      <i data-lucide="map-pin"></i> Gunakan Koordinat Saya Saat Ini
+                    </button>
+                  </div>
+
+                  <hr class="form-divider">
+
+                  <!-- Network Config -->
+                  <h4 class="settings-section-title"><i data-lucide="globe"></i> Alamat IP Jaringan</h4>
+                  
+                  <div class="form-group">
+                    <label for="set-office-ip">IP Address Kantor Terdaftar</label>
+                    <input type="text" id="set-office-ip" class="input-field" placeholder="127.0.0.1" required>
+                    <p class="field-hint">Catatan: Untuk pengetesan lokal, gunakan <code>127.0.0.1</code> atau nonaktifkan pembatasan IP.</p>
+                  </div>
+
+                  <div class="helper-buttons">
+                    <button type="button" id="btn-get-current-ip" class="btn-outline-info">
+                      <i data-lucide="network"></i> Deteksi & Gunakan IP Saya Saat Ini
+                    </button>
+                  </div>
+
+                  <div class="form-actions-settings">
+                    <button type="submit" class="btn-primary btn-large">
+                      <i data-lucide="save"></i> Simpan Semua Pengaturan
+                    </button>
+                  </div>
+
+                </form>
+              </div>
+
+              <!-- Information Panel Card -->
+              <div class="card info-settings-card">
+                <h3>Status Koneksi Anda Saat Ini</h3>
+                <div class="info-stat-list">
+                  <div class="info-stat-item">
+                    <div class="info-stat-icon">
+                      <i data-lucide="network"></i>
+                    </div>
+                    <div class="info-stat-details">
+                      <p class="info-label">IP Anda Sekarang:</p>
+                      <p id="info-current-ip" class="info-value">Mendeteksi...</p>
+                    </div>
+                  </div>
+
+                  <div class="info-stat-item">
+                    <div class="info-stat-icon">
+                      <i data-lucide="map-pin"></i>
+                    </div>
+                    <div class="info-stat-details">
+                      <p class="info-label">Koordinat Anda Sekarang:</p>
+                      <p id="info-current-coords" class="info-value">Mencari lokasi...</p>
+                    </div>
+                  </div>
+
+                  <div class="info-stat-item">
+                    <div class="info-stat-icon">
+                      <i data-lucide="navigation"></i>
+                    </div>
+                    <div class="info-stat-details">
+                      <p class="info-label">Jarak ke Koordinat Kantor Terdaftar:</p>
+                      <p id="info-current-distance" class="info-value">Menghitung...</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="alert-info-box">
+                  <h4><i data-lucide="info"></i> Tips Cara Pengetesan</h4>
+                  <p>Jika ingin menyimulasikan pembatasan absensi di kantor:</p>
+                  <ol>
+                    <li>Aktifkan <strong>Batasi Berdasarkan GPS</strong> & <strong>IP Kantor</strong>.</li>
+                    <li>Untuk mempermudah tes sukses, klik tombol <strong>"Gunakan Koordinat Saya Saat Ini"</strong> dan <strong>"Gunakan IP Saya Saat Ini"</strong> lalu Simpan Pengaturan.</li>
+                    <li>Sekarang Anda terdeteksi berada di dalam area kantor dan bisa melakukan absensi.</li>
+                  </ol>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Photo Preview Modal -->
+  <div id="modal-photo" class="modal">
+    <div class="modal-content">
+      <span class="modal-close">&times;</span>
+      <h3>Foto Selfie Absensi</h3>
+      <div class="modal-body-img">
+        <img id="modal-expanded-img" src="" alt="Selfie Absensi">
+      </div>
+      <div id="modal-photo-details" class="modal-details-text">
+        <!-- Details populate here -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification System -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- JavaScript Modules -->
+  <script src="{{ asset('js/app.js') }}"></script>
+  <script src="{{ asset('js/admin.js') }}"></script>
+</body>
+</html>
