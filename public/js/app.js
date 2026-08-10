@@ -1,9 +1,12 @@
 // Global Variables
 let currentStream = null;
+let pendingAttendanceType = null;
 
 // DOM Elements
 const btnClockIn = document.getElementById('btn-clock-in');
 const btnClockOut = document.getElementById('btn-clock-out');
+const btnSubmitAttendance = document.getElementById('btn-submit-attendance');
+const attendanceSelectionHelp = document.getElementById('attendance-selection-help');
 const liveClock = document.getElementById('live-clock');
 const liveDate = document.getElementById('live-date');
 const badgeGps = document.getElementById('badge-gps');
@@ -40,8 +43,9 @@ document.addEventListener('DOMContentLoaded', () => {
   setupNavigation();
   
   // Setup Attendance actions
-  btnClockIn.addEventListener('click', () => submitAttendance('masuk'));
-  btnClockOut.addEventListener('click', () => submitAttendance('pulang'));
+  btnClockIn.addEventListener('click', () => selectAttendanceType('masuk'));
+  btnClockOut.addEventListener('click', () => selectAttendanceType('pulang'));
+  btnSubmitAttendance.addEventListener('click', () => submitAttendance());
 });
 
 // Navigation between Kiosk & Admin View
@@ -139,8 +143,10 @@ async function initCamera() {
   stopCamera();
   
   try {
-    cameraStatusBadge.textContent = "INITIALIZING...";
-    cameraStatusBadge.className = "badge-status offline";
+    if (cameraStatusBadge) {
+      cameraStatusBadge.textContent = "INITIALIZING...";
+      cameraStatusBadge.className = "badge-status offline";
+    }
     
     const constraints = {
       video: {
@@ -156,14 +162,18 @@ async function initCamera() {
     
     // Update UI states
     cameraPlaceholder.style.display = 'none';
-    cameraStatusBadge.textContent = "ONLINE";
-    cameraStatusBadge.className = "badge-status online";
+    if (cameraStatusBadge) {
+      cameraStatusBadge.textContent = "ONLINE";
+      cameraStatusBadge.className = "badge-status online";
+    }
     cameraWrapper.classList.add('active');
     
   } catch (error) {
     console.error("Gagal membuka kamera:", error);
-    cameraStatusBadge.textContent = "OFFLINE";
-    cameraStatusBadge.className = "badge-status offline";
+    if (cameraStatusBadge) {
+      cameraStatusBadge.textContent = "OFFLINE";
+      cameraStatusBadge.className = "badge-status offline";
+    }
     cameraPlaceholder.style.display = 'flex';
     cameraWrapper.classList.remove('active');
     
@@ -179,8 +189,10 @@ function stopCamera() {
   }
   videoWebcam.srcObject = null;
   cameraPlaceholder.style.display = 'flex';
-  cameraStatusBadge.textContent = "OFFLINE";
-  cameraStatusBadge.className = "badge-status offline";
+  if (cameraStatusBadge) {
+    cameraStatusBadge.textContent = "OFFLINE";
+    cameraStatusBadge.className = "badge-status offline";
+  }
   cameraWrapper.classList.remove('active', 'ready');
 }
 
@@ -330,6 +342,41 @@ function updateValidationStatus() {
   lucide.createIcons();
 }
 
+function selectAttendanceType(type) {
+  pendingAttendanceType = type;
+
+  btnClockIn.classList.toggle('active', type === 'masuk');
+  btnClockOut.classList.toggle('active', type === 'pulang');
+
+  if (btnSubmitAttendance) {
+    btnSubmitAttendance.disabled = false;
+    btnSubmitAttendance.innerHTML = `<i data-lucide="camera"></i> ${type === 'masuk' ? 'Ambil Foto & Simpan Masuk' : 'Ambil Foto & Simpan Pulang'}`;
+    lucide.createIcons();
+  }
+
+  if (attendanceSelectionHelp) {
+    attendanceSelectionHelp.textContent = `Aksi terpilih: ${type === 'masuk' ? 'Masuk' : 'Pulang'}. Tekan tombol foto untuk melanjutkan.`;
+  }
+
+  showToast(`Aksi ${type === 'masuk' ? 'Masuk' : 'Pulang'} dipilih. Silakan ambil foto untuk mengirim absensi.`, 'info');
+}
+
+function resetAttendanceSelection() {
+  pendingAttendanceType = null;
+  btnClockIn.classList.remove('active');
+  btnClockOut.classList.remove('active');
+
+  if (btnSubmitAttendance) {
+    btnSubmitAttendance.disabled = true;
+    btnSubmitAttendance.innerHTML = '<i data-lucide="camera"></i> Ambil Foto & Kirim';
+    lucide.createIcons();
+  }
+
+  if (attendanceSelectionHelp) {
+    attendanceSelectionHelp.textContent = 'Pilih aksi Masuk atau Pulang dulu, lalu ambil foto.';
+  }
+}
+
 // Capture Image from Webcam
 function captureSelfie() {
   if (!currentStream) return null;
@@ -352,7 +399,12 @@ function captureSelfie() {
 }
 
 // Submit Attendance Transaction
-async function submitAttendance(type) {
+async function submitAttendance(type = pendingAttendanceType) {
+  if (!type) {
+    showToast("Pilih aksi Masuk atau Pulang terlebih dahulu.", "info");
+    return;
+  }
+
   // Basic validation
   if (!currentStream) {
     showToast("Silakan aktifkan kamera dan izinkan akses webcam!", "error");
@@ -392,6 +444,7 @@ async function submitAttendance(type) {
     
     if (res.ok) {
       showToast(data.message, "success");
+      resetAttendanceSelection();
       // Play a quick success visual effect by adding green flash to camera
       cameraWrapper.style.borderColor = "var(--success)";
       setTimeout(() => {

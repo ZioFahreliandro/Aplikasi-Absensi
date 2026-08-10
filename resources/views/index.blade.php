@@ -9,7 +9,7 @@
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <!-- Lucide Icons CDN -->
   <script src="https://unpkg.com/lucide@latest"></script>
   <!-- CSS Stylesheet -->
@@ -25,25 +25,24 @@
       </div>
       <div class="logo-text">
         <h1>Absen<span>Go</span></h1>
-        <p>Sistem Absensi Kehadiran Kantor (Laravel)</p>
       </div>
     </div>
     <nav class="header-nav">
       <button id="nav-kiosk" class="nav-btn active">
-        <i data-lucide="camera"></i> Kiosk Absen
+        <i data-lucide="camera"></i> Absen
       </button>
       <button id="nav-admin" class="nav-btn">
-        <i data-lucide="layout-dashboard"></i> Panel Admin
+        <i data-lucide="layout-dashboard"></i> Admin
       </button>
     </nav>
   </header>
 
   <main class="app-container">
-    
+
     <!-- 1. KIOSK ABSEN VIEW -->
     <section id="view-kiosk" class="view-section active">
       <div class="kiosk-grid">
-        
+
         <!-- Left Side: Interactive Attendance Form & Clock -->
         <div class="kiosk-left">
           <!-- Premium Clock Card -->
@@ -59,19 +58,20 @@
 
           <!-- Attendance Action Card -->
           <div class="card attendance-card">
-            <h2 class="section-title">Formulir Absensi</h2>
+            <h2 class="section-title">Absensi</h2>
             <p class="section-subtitle">Ambil foto selfie untuk melakukan absensi.</p>
-            
+
             <form id="attendance-form" class="app-form">
               <!-- Clock In/Out buttons -->
               <div class="attendance-actions">
                 <button type="button" id="btn-clock-in" class="action-btn clock-in-btn">
-                  <i data-lucide="log-in"></i> Absen Masuk
+                  <i data-lucide="log-in"></i> Masuk
                 </button>
                 <button type="button" id="btn-clock-out" class="action-btn clock-out-btn">
-                  <i data-lucide="log-out"></i> Absen Pulang
+                  <i data-lucide="log-out"></i> Pulang
                 </button>
               </div>
+              <p id="attendance-selection-help" class="camera-tip" style="margin-top: 10px;">Pilih aksi Masuk atau Pulang dulu, lalu ambil foto.</p>
             </form>
           </div>
         </div>
@@ -81,9 +81,8 @@
           <div class="card camera-card">
             <div class="camera-header">
               <h2>Kamera Pengenal</h2>
-              <span id="camera-status-badge" class="badge-status offline">OFFLINE</span>
             </div>
-            
+
             <div class="camera-frame-container">
               <div class="camera-circle-wrapper">
                 <video id="webcam" autoplay playsinline muted></video>
@@ -95,7 +94,11 @@
                     <i data-lucide="video"></i> Aktifkan Kamera
                   </button>
                 </div>
-                <div class="face-overlay-guide"></div>
+              </div>
+              <div class="attendance-actions" style="margin-top: 12px; justify-content: center;">
+                <button type="button" id="btn-submit-attendance" class="btn-primary-small" disabled>
+                  <i data-lucide="camera"></i> Ambil Foto & Kirim
+                </button>
               </div>
               <p class="camera-tip">Posisikan wajah Anda tepat di dalam lingkaran</p>
             </div>
@@ -108,7 +111,7 @@
     <!-- 2. ADMIN DASHBOARD VIEW -->
     <section id="view-admin" class="view-section">
       <div class="admin-layout">
-        
+
         <!-- Sidebar Navigation for Admin Sections -->
         <aside class="admin-sidebar">
           <button id="tab-recap" class="tab-btn active">
@@ -124,7 +127,7 @@
 
         <!-- Admin Content Area -->
         <div class="admin-content">
-          
+
           <!-- Sub-tab 1: Rekap Absensi -->
           <div id="sub-view-recap" class="sub-view active">
             <div class="sub-view-header">
@@ -139,6 +142,9 @@
                 </div>
                 <button id="btn-export-csv" class="btn-success">
                   <i data-lucide="download"></i> Ekspor CSV
+                </button>
+                <button id="btn-delete-today" class="btn-danger">
+                  <i data-lucide="trash-2"></i> Hapus Rekap Hari Ini
                 </button>
               </div>
             </div>
@@ -216,22 +222,22 @@
                 <h3 id="employee-form-title">Tambah Karyawan Baru</h3>
                 <form id="employee-form" class="app-form">
                   <input type="hidden" id="employee-id">
-                  
+
                   <div class="form-group">
                     <label for="emp-name">Nama Lengkap</label>
                     <input type="text" id="emp-name" class="input-field" placeholder="Contoh: Ahmad Subardjo" required>
                   </div>
-                  
+
                   <div class="form-group">
                     <label for="emp-nip">NIP / Nomor Induk Pegawai</label>
                     <input type="text" id="emp-nip" class="input-field" placeholder="Contoh: 19960205" required>
                   </div>
-                  
+
                   <div class="form-group">
                     <label for="emp-pin">PIN Absensi (4 Angka)</label>
                     <input type="password" id="emp-pin" class="input-field" placeholder="Contoh: 1234" maxlength="4" pattern="[0-9]{4}" required inputmode="numeric">
                   </div>
-                  
+
                   <div class="form-actions">
                     <button type="submit" id="btn-submit-employee" class="btn-primary">
                       <i data-lucide="plus-circle"></i> Simpan Karyawan
@@ -275,12 +281,12 @@
             </div>
 
             <div class="settings-grid">
-              
+
               <!-- Settings Form Card -->
               <div class="card settings-form-card">
                 <h3>Konfigurasi Pembatasan Akses</h3>
                 <form id="settings-form" class="app-form">
-                  
+
                   <div class="form-group">
                     <label for="set-office-name">Nama Kantor / Lokasi</label>
                     <input type="text" id="set-office-name" class="input-field" placeholder="Kantor Pusat" required>
@@ -300,7 +306,7 @@
                         </div>
                       </div>
                     </div>
-                    
+
                     <div class="toggle-group">
                       <div class="toggle-control">
                         <label class="switch">
@@ -319,7 +325,7 @@
 
                   <!-- GPS Config -->
                   <h4 class="settings-section-title"><i data-lucide="map-pin"></i> Koordinat Geolocation</h4>
-                  
+
                   <div class="form-row-2">
                     <div class="form-group">
                       <label for="set-office-lat">Latitude Kantor</label>
@@ -346,7 +352,7 @@
 
                   <!-- Network Config -->
                   <h4 class="settings-section-title"><i data-lucide="globe"></i> Alamat IP Jaringan</h4>
-                  
+
                   <div class="form-group">
                     <label for="set-office-ip">IP Address Kantor Terdaftar</label>
                     <input type="text" id="set-office-ip" class="input-field" placeholder="127.0.0.1" required>

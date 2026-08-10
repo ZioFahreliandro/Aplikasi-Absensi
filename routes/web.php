@@ -25,3 +25,4 @@ Route::delete('/api/employees/{id}', [AdminController::class, 'deleteEmployee'])
 
 // 5. Admin / Attendance Logs API
 Route::get('/api/attendance', [AdminController::class, 'getAttendance']);
+Route::delete('/api/attendance/today', [AdminController::class, 'deleteTodayAttendance']);

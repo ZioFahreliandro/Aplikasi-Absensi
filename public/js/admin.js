@@ -13,6 +13,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Listeners for Recap
   filterMonthInput.addEventListener('change', loadRecapData);
   document.getElementById('btn-export-csv').addEventListener('click', exportRecapCSV);
+  document.getElementById('btn-delete-today').addEventListener('click', deleteTodayAttendance);
   
   // Listeners for Employee CRUD
   document.getElementById('employee-form').addEventListener('submit', saveEmployee);
@@ -262,6 +263,32 @@ function exportRecapCSV() {
   document.body.removeChild(link);
   
   window.showToast(`Berhasil mengekspor rekap ${monthFilter} ke CSV`, "success");
+}
+
+async function deleteTodayAttendance() {
+  const confirmed = confirm('Apakah Anda yakin ingin menghapus semua rekapan absensi hari ini? Tindakan ini tidak bisa dibatalkan.');
+  if (!confirmed) return;
+
+  try {
+    const res = await fetch('/api/attendance/today', {
+      method: 'DELETE',
+      headers: {
+        'X-CSRF-TOKEN': getCsrfToken()
+      }
+    });
+
+    const data = await res.json();
+
+    if (res.ok) {
+      window.showToast(data.message || 'Rekapan hari ini berhasil dihapus', 'success');
+      loadRecapData();
+    } else {
+      window.showToast(data.error || 'Gagal menghapus rekapan hari ini', 'error');
+    }
+  } catch (error) {
+    console.error(error);
+    window.showToast('Kesalahan jaringan saat menghapus rekapan hari ini', 'error');
+  }
 }
 
 // Date formatter utility
