@@ -173,8 +173,10 @@ async function initCamera() {
   stopCamera();
   
   try {
-    cameraStatusBadge.textContent = "INITIALIZING...";
-    cameraStatusBadge.className = "badge-status offline";
+    if (cameraStatusBadge) {
+      cameraStatusBadge.textContent = "INITIALIZING...";
+      cameraStatusBadge.className = "badge-status offline";
+    }
     
     const constraints = {
       video: {
@@ -190,16 +192,20 @@ async function initCamera() {
     
     // Update UI states
     cameraPlaceholder.style.display = 'none';
-    cameraStatusBadge.textContent = "ONLINE";
-    cameraStatusBadge.className = "badge-status online";
+    if (cameraStatusBadge) {
+      cameraStatusBadge.textContent = "ONLINE";
+      cameraStatusBadge.className = "badge-status online";
+    }
     cameraWrapper.classList.add('active');
     
     // Re-verify form validation
     updateValidationStatus();
   } catch (error) {
     console.error("Gagal membuka kamera:", error);
-    cameraStatusBadge.textContent = "OFFLINE";
-    cameraStatusBadge.className = "badge-status offline";
+    if (cameraStatusBadge) {
+      cameraStatusBadge.textContent = "OFFLINE";
+      cameraStatusBadge.className = "badge-status offline";
+    }
     cameraPlaceholder.style.display = 'flex';
     cameraWrapper.classList.remove('active');
     
@@ -215,8 +221,10 @@ function stopCamera() {
   }
   videoWebcam.srcObject = null;
   cameraPlaceholder.style.display = 'flex';
-  cameraStatusBadge.textContent = "OFFLINE";
-  cameraStatusBadge.className = "badge-status offline";
+  if (cameraStatusBadge) {
+    cameraStatusBadge.textContent = "OFFLINE";
+    cameraStatusBadge.className = "badge-status offline";
+  }
   cameraWrapper.classList.remove('active', 'ready');
 }
 

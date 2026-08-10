@@ -33,3 +33,4 @@ Route::middleware('auth')->group(function () {
 // 3. Attendance & Network utility APIs
 Route::get('/api/my-ip', [AttendanceController::class, 'myIp']);
 Route::post('/api/attendance', [AttendanceController::class, 'store']);
+Route::delete('/api/attendance/today', [AdminController::class, 'deleteTodayAttendance']);

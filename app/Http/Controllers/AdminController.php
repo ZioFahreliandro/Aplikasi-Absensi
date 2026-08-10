@@ -139,4 +139,15 @@ class AdminController extends Controller
 
         return response()->json($logs);
     }
+
+    /**
+     * Delete attendance records for today.
+     */
+    public function deleteTodayAttendance()
+    {
+        $today = now()->toDateString();
+        $deleted = Attendance::where('date', $today)->delete();
+
+        return response()->json(['message' => 'Rekapan absensi hari ini berhasil dihapus', 'deleted' => $deleted]);
+    }
 }

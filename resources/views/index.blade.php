@@ -9,7 +9,7 @@
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <!-- Lucide Icons CDN -->
   <script src="https://unpkg.com/lucide@latest"></script>
   <!-- CSS Stylesheet -->
@@ -25,12 +25,11 @@
       </div>
       <div class="logo-text">
         <h1>Absen<span>Go</span></h1>
-        <p>Sistem Absensi Kehadiran Kantor (Laravel)</p>
       </div>
     </div>
     <nav class="header-nav">
       <button id="nav-kiosk" class="nav-btn active">
-        <i data-lucide="camera"></i> Kiosk Absen
+        <i data-lucide="camera"></i> Absen
       </button>
 
       @guest
@@ -51,11 +50,11 @@
   </header>
 
   <main class="app-container">
-    
+
     <!-- 1. KIOSK ABSEN VIEW -->
     <section id="view-kiosk" class="view-section active">
       <div class="kiosk-grid">
-        
+
         <!-- Left Side: Interactive Attendance Form & Clock -->
         <div class="kiosk-left">
           <!-- Premium Clock Card -->
@@ -71,19 +70,20 @@
 
           <!-- Attendance Action Card -->
           <div class="card attendance-card">
-            <h2 class="section-title">Formulir Absensi</h2>
+            <h2 class="section-title">Absensi</h2>
             <p class="section-subtitle">Ambil foto selfie untuk melakukan absensi.</p>
-            
+
             <form id="attendance-form" class="app-form">
               <!-- Clock In/Out buttons -->
               <div class="attendance-actions">
                 <button type="button" id="btn-clock-in" class="action-btn clock-in-btn">
-                  <i data-lucide="log-in"></i> Absen Masuk
+                  <i data-lucide="log-in"></i> Masuk
                 </button>
                 <button type="button" id="btn-clock-out" class="action-btn clock-out-btn">
-                  <i data-lucide="log-out"></i> Absen Pulang
+                  <i data-lucide="log-out"></i> Pulang
                 </button>
               </div>
+              <p id="attendance-selection-help" class="camera-tip" style="margin-top: 10px;">Pilih aksi Masuk atau Pulang dulu, lalu ambil foto.</p>
             </form>
           </div>
         </div>
@@ -93,9 +93,8 @@
           <div class="card camera-card">
             <div class="camera-header">
               <h2>Kamera Pengenal</h2>
-              <span id="camera-status-badge" class="badge-status offline">OFFLINE</span>
             </div>
-            
+
             <div class="camera-frame-container">
               <div class="camera-circle-wrapper">
                 <video id="webcam" autoplay playsinline muted></video>
@@ -107,7 +106,11 @@
                     <i data-lucide="video"></i> Aktifkan Kamera
                   </button>
                 </div>
-                <div class="face-overlay-guide"></div>
+              </div>
+              <div class="attendance-actions" style="margin-top: 12px; justify-content: center;">
+                <button type="button" id="btn-submit-attendance" class="btn-primary-small" disabled>
+                  <i data-lucide="camera"></i> Ambil Foto & Kirim
+                </button>
               </div>
               <p class="camera-tip">Posisikan wajah Anda tepat di dalam lingkaran</p>
             </div>
@@ -117,6 +120,7 @@
       </div>
     </section>
 
+>>>>>>> 453a8f6ec9bce382a2b1ab518a77196627d29f77
   </main>
 
   <!-- Photo Preview Modal -->
