@@ -25,15 +25,24 @@
       </div>
       <div class="logo-text">
         <h1>Absen<span>Go</span></h1>
+        <p>Sistem Absensi Berbasis Website</p>
       </div>
     </div>
     <nav class="header-nav">
       <button id="nav-kiosk" class="nav-btn active">
         <i data-lucide="camera"></i> Absen
       </button>
-      <button id="nav-admin" class="nav-btn">
-        <i data-lucide="layout-dashboard"></i> Admin
-      </button>
+      @can('access-admin')
+        <button id="nav-admin" class="nav-btn">
+          <i data-lucide="layout-dashboard"></i> Admin
+        </button>
+      @endcan
+      <form method="POST" action="{{ route('logout') }}">
+        @csrf
+        <button type="submit" class="nav-btn">
+          <i data-lucide="log-out"></i> Keluar
+        </button>
+      </form>
     </nav>
   </header>
 
@@ -90,9 +99,14 @@
                 <div id="camera-placeholder" class="camera-placeholder">
                   <i data-lucide="camera-off" class="placeholder-icon"></i>
                   <p>Kamera Belum Aktif</p>
-                  <button id="btn-init-camera" class="btn-primary-small">
-                    <i data-lucide="video"></i> Aktifkan Kamera
-                  </button>
+                  <div class="attendance-actions" style="margin-top: 8px; justify-content: center; gap: 0.75rem;">
+                    <button id="btn-init-camera" class="btn-primary-small">
+                      <i data-lucide="video"></i> Aktifkan Kamera
+                    </button>
+                    <button id="btn-toggle-camera" class="btn-secondary-small" type="button">
+                      <i data-lucide="power"></i> Matikan Kamera
+                    </button>
+                  </div>
                 </div>
               </div>
               <div class="attendance-actions" style="margin-top: 12px; justify-content: center;">
@@ -108,6 +122,7 @@
       </div>
     </section>
 
+    @can('access-admin')
     <!-- 2. ADMIN DASHBOARD VIEW -->
     <section id="view-admin" class="view-section">
       <div class="admin-layout">
@@ -191,15 +206,13 @@
                       <th>Waktu</th>
                       <th>Tipe</th>
                       <th>Selfie</th>
-                      <th>Lokasi (GPS)</th>
-                      <th>IP Jaringan</th>
                       <th>Status Validasi</th>
                     </tr>
                   </thead>
                   <tbody id="recap-table-body">
                     <!-- Dynamic rows here -->
                     <tr>
-                      <td colspan="8" class="text-center text-muted">Memuat data absensi...</td>
+                      <td colspan="6" class="text-center text-muted">Memuat data absensi...</td>
                     </tr>
                   </tbody>
                 </table>
@@ -234,8 +247,8 @@
                   </div>
 
                   <div class="form-group">
-                    <label for="emp-pin">PIN Absensi (4 Angka)</label>
-                    <input type="password" id="emp-pin" class="input-field" placeholder="Contoh: 1234" maxlength="4" pattern="[0-9]{4}" required inputmode="numeric">
+                    <label for="emp-password">Password Login</label>
+                    <input type="password" id="emp-password" class="input-field" placeholder="Minimal 6 karakter" minlength="6" required autocomplete="new-password">
                   </div>
 
                   <div class="form-actions">
@@ -251,14 +264,14 @@
 
               <!-- Employee List Card -->
               <div class="card employee-list-card">
-                <h3>Daftar Karyawan Terdaftar</h3>
+                <h3>Daftar Karyawan</h3>
                 <div class="table-responsive">
                   <table class="app-table">
                     <thead>
                       <tr>
                         <th>NIP</th>
                         <th>Nama</th>
-                        <th>PIN</th>
+                        <th>Password</th>
                         <th>Aksi</th>
                       </tr>
                     </thead>
@@ -426,6 +439,7 @@
         </div>
       </div>
     </section>
+    @endcan
 
   </main>
 
@@ -448,6 +462,8 @@
 
   <!-- JavaScript Modules -->
   <script src="{{ asset('js/app.js') }}"></script>
+  @can('access-admin')
   <script src="{{ asset('js/admin.js') }}"></script>
+  @endcan
 </body>
 </html>

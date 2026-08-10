@@ -6,6 +6,7 @@ use App\Models\Employee;
 use App\Models\Attendance;
 use App\Models\Setting;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
 
 class AdminController extends Controller
 {
@@ -25,13 +26,13 @@ class AdminController extends Controller
         $request->validate([
             'name' => 'required|string|max:255',
             'nip' => 'required|string|unique:employees,nip',
-            'pin' => 'required|string|size:4'
+            'password' => 'required|string|min:6'
         ]);
 
         $employee = Employee::create([
             'name' => $request->name,
             'nip' => $request->nip,
-            'pin' => $request->pin
+            'password' => Hash::make($request->password)
         ]);
 
         return response()->json($employee, 201);
@@ -50,13 +51,13 @@ class AdminController extends Controller
         $request->validate([
             'name' => 'required|string|max:255',
             'nip' => 'required|string|unique:employees,nip,' . $id,
-            'pin' => 'required|string|size:4'
+            'password' => 'required|string|min:6'
         ]);
 
         $employee->update([
             'name' => $request->name,
             'nip' => $request->nip,
-            'pin' => $request->pin
+            'password' => Hash::make($request->password)
         ]);
 
         return response()->json($employee);

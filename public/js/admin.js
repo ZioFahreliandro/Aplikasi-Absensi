@@ -79,7 +79,7 @@ async function loadRecapData() {
   const monthFilter = document.getElementById('filter-month').value;
   const tbody = document.getElementById('recap-table-body');
   
-  tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted">Memuat data absensi...</td></tr>`;
+  tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted">Memuat data absensi...</td></tr>`;
   
   try {
     const res = await fetch(`/api/attendance?month=${monthFilter}`);
@@ -89,7 +89,7 @@ async function loadRecapData() {
     updateStats(currentAttendanceLogs);
     
     if (currentAttendanceLogs.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted">Tidak ada rekaman absensi pada bulan ini.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted">Tidak ada rekaman absensi pada bulan ini.</td></tr>`;
       return;
     }
     
@@ -110,16 +110,6 @@ async function loadRecapData() {
         statusBadge = `<span class="indicator-badge danger" style="font-size:0.75rem; padding:0.2rem 0.5rem"><i data-lucide="x" style="width:12px;height:12px"></i> Gagal</span>`;
       }
       
-      // GPS Distance display
-      // Laravel maps SQLite double/float fields. Sometimes JSON decodes them as numbers or null
-      const latitude = log.latitude;
-      const longitude = log.longitude;
-      const gpsDisplay = (latitude !== null && latitude !== undefined)
-        ? `<span title="Lat: ${latitude}, Lng: ${longitude}">
-             ${log.distance !== null ? `${log.distance} meter` : 'Terdeteksi'}
-           </span>`
-        : `<span class="text-muted">Tidak ada GPS</span>`;
-      
       tr.innerHTML = `
         <td><strong>${log.employee_name}</strong></td>
         <td>${formatIndoDate(log.date)}</td>
@@ -128,8 +118,6 @@ async function loadRecapData() {
         <td>
           <img src="${log.selfie_url}" class="table-selfie-thumb" alt="Selfie ${log.employee_name}">
         </td>
-        <td>${gpsDisplay}</td>
-        <td><code>${log.ip_address || '-'}</code></td>
         <td>${statusBadge}</td>
       `;
       
@@ -144,7 +132,7 @@ async function loadRecapData() {
     lucide.createIcons();
   } catch (error) {
     console.error("Gagal mengambil rekap absensi:", error);
-    tbody.innerHTML = `<tr><td colspan="8" class="text-center text-danger">Gagal memuat data absensi dari server.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="6" class="text-center text-danger">Gagal memuat data absensi dari server.</td></tr>`;
   }
 }
 
@@ -358,15 +346,15 @@ async function saveEmployee(e) {
   const id = document.getElementById('employee-id').value;
   const name = document.getElementById('emp-name').value.trim();
   const nip = document.getElementById('emp-nip').value.trim();
-  const pin = document.getElementById('emp-pin').value.trim();
+  const password = document.getElementById('emp-password').value;
   
-  if (!name || !nip || !pin) {
+  if (!name || !nip || !password) {
     window.showToast("Semua data input karyawan wajib diisi!", "error");
     return;
   }
   
-  if (pin.length !== 4 || isNaN(pin)) {
-    window.showToast("PIN wajib berisi 4 digit angka!", "error");
+  if (password.length < 6) {
+    window.showToast("Password minimal terdiri dari 6 karakter!", "error");
     return;
   }
   
@@ -380,7 +368,7 @@ async function saveEmployee(e) {
         'Content-Type': 'application/json',
         'X-CSRF-TOKEN': getCsrfToken()
       },
-      body: JSON.stringify({ name, nip, pin })
+      body: JSON.stringify({ name, nip, password })
     });
     
     if (res.ok) {
@@ -404,7 +392,7 @@ function editEmployee(emp) {
   document.getElementById('employee-id').value = emp.id;
   document.getElementById('emp-name').value = emp.name;
   document.getElementById('emp-nip').value = emp.nip;
-  document.getElementById('emp-pin').value = emp.pin; // show raw pin for edit convenience
+  document.getElementById('emp-password').value = '';
   
   document.getElementById('employee-form-title').textContent = "Edit Data Karyawan";
   document.getElementById('btn-submit-employee').innerHTML = `<i data-lucide="save"></i> Perbarui Karyawan`;
@@ -416,7 +404,7 @@ function resetEmployeeForm() {
   document.getElementById('employee-id').value = '';
   document.getElementById('emp-name').value = '';
   document.getElementById('emp-nip').value = '';
-  document.getElementById('emp-pin').value = '';
+  document.getElementById('emp-password').value = '';
   
   document.getElementById('employee-form-title').textContent = "Tambah Karyawan Baru";
   document.getElementById('btn-submit-employee').innerHTML = `<i data-lucide="plus-circle"></i> Simpan Karyawan`;

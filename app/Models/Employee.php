@@ -7,7 +7,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Employee extends Model
 {
-    protected $fillable = ['name', 'nip', 'pin'];
+    protected $fillable = ['name', 'nip', 'password'];
+
+    protected $hidden = ['password'];
 
     /**
      * Get the attendances for the employee.

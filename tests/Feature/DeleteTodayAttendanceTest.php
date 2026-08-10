@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Attendance;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -12,6 +13,8 @@ class DeleteTodayAttendanceTest extends TestCase
 
     public function test_it_can_delete_todays_attendance_records_only(): void
     {
+        $this->actingAs(User::factory()->create(['role' => 'admin']));
+
         $today = now()->toDateString();
         $yesterday = now()->subDay()->toDateString();
 

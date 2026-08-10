@@ -17,6 +17,7 @@ const videoWebcam = document.getElementById('webcam');
 const canvasPhoto = document.getElementById('photo-canvas');
 const cameraPlaceholder = document.getElementById('camera-placeholder');
 const btnInitCamera = document.getElementById('btn-init-camera');
+const btnToggleCamera = document.getElementById('btn-toggle-camera');
 const cameraStatusBadge = document.getElementById('camera-status-badge');
 const cameraWrapper = document.querySelector('.camera-circle-wrapper');
 
@@ -38,6 +39,7 @@ document.addEventListener('DOMContentLoaded', () => {
   
   // Setup Camera listeners
   btnInitCamera.addEventListener('click', initCamera);
+  btnToggleCamera.addEventListener('click', toggleCamera);
   
   // Setup Navigation
   setupNavigation();
@@ -60,13 +62,12 @@ function setupNavigation() {
     navAdmin.classList.remove('active');
     viewKiosk.classList.add('active');
     viewAdmin.classList.remove('active');
-    
-    // Auto start camera when going to Kiosk if permissions granted before
-    if (!currentStream) {
-      initCamera();
-    }
   });
   
+  if (!navAdmin || !viewAdmin) {
+    return;
+  }
+
   navAdmin.addEventListener('click', () => {
     navAdmin.classList.add('active');
     navKiosk.classList.remove('active');
@@ -179,6 +180,22 @@ async function initCamera() {
     
     showToast("Izin kamera ditolak atau tidak ada kamera terdeteksi.", "error");
   }
+}
+
+function toggleCamera() {
+  if (currentStream) {
+    stopCamera();
+    if (btnInitCamera) {
+      btnInitCamera.innerHTML = '<i data-lucide="video"></i> Aktifkan Kamera';
+    }
+    if (btnToggleCamera) {
+      btnToggleCamera.innerHTML = '<i data-lucide="power"></i> Aktifkan Kamera';
+    }
+    lucide.createIcons();
+    return;
+  }
+
+  initCamera();
 }
 
 // Stop Webcam Stream
