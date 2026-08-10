@@ -53,9 +53,9 @@ function setupNavigation() {
   
   navKiosk.addEventListener('click', () => {
     navKiosk.classList.add('active');
-    navAdmin.classList.remove('active');
+    if (navAdmin) navAdmin.classList.remove('active');
     viewKiosk.classList.add('active');
-    viewAdmin.classList.remove('active');
+    if (viewAdmin) viewAdmin.classList.remove('active');
     
     // Auto start camera when going to Kiosk if permissions granted before
     if (!currentStream) {
@@ -63,20 +63,22 @@ function setupNavigation() {
     }
   });
   
-  navAdmin.addEventListener('click', () => {
-    navAdmin.classList.add('active');
-    navKiosk.classList.remove('active');
-    viewAdmin.classList.add('active');
-    viewKiosk.classList.remove('active');
-    
-    // Stop camera stream when leaving kiosk to save CPU/battery
-    stopCamera();
-    
-    // Trigger admin fetch
-    if (window.initAdminPanel) {
-      window.initAdminPanel();
-    }
-  });
+  if (navAdmin && viewAdmin) {
+    navAdmin.addEventListener('click', () => {
+      navAdmin.classList.add('active');
+      navKiosk.classList.remove('active');
+      viewAdmin.classList.add('active');
+      viewKiosk.classList.remove('active');
+      
+      // Stop camera stream when leaving kiosk to save CPU/battery
+      stopCamera();
+      
+      // Trigger admin fetch
+      if (window.initAdminPanel) {
+        window.initAdminPanel();
+      }
+    });
+  }
 }
 
 // Digital Clock
