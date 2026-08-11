@@ -9,7 +9,7 @@
 <body>
     <main class="app-container" style="display:flex; justify-content:center; align-items:center; min-height:100vh;">
         <div class="card" style="max-width:480px; width:100%; text-align:center;">
-            <h2 style="margin-bottom:0.5rem;">Login Absensi</h2>
+            <h2 style="margin:0 0 0.5rem; text-align:center; width:100%;">Login Absensi</h2>
             <p style="margin-bottom:1.5rem; color:#666;">Masukkan NIP dan password yang telah dibuat admin.</p>
 
             @if ($errors->any())
@@ -25,8 +25,8 @@
                 <div class="form-group" style="text-align:left;">
                     <label for="password">Password</label>
                     <input type="password" id="password" name="password" class="input-field" required>
-                </div>
-                <button type="submit" class="btn-primary" style="width:100%;">Login</button>
+                </div class=>
+                <button type="submit" class="btn-primary" style="width:100%; justify-content:center;">Login</button>
             </form>
         </div>
     </main>
