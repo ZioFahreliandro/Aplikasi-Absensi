@@ -19,11 +19,11 @@ Route::middleware('auth')->group(function () {
     })->middleware('can:access-admin')->name('admin');
 
     Route::get('/api/my-ip', [AttendanceController::class, 'myIp']);
+    Route::get('/api/settings', [AdminController::class, 'getSettings']);
     Route::post('/api/attendance', [AttendanceController::class, 'store']);
 });
 
 Route::middleware(['auth', 'can:access-admin'])->group(function () {
-    Route::get('/api/settings', [AdminController::class, 'getSettings']);
     Route::post('/api/settings', [AdminController::class, 'storeSettings']);
     Route::get('/api/employees', [AdminController::class, 'getEmployees']);
     Route::post('/api/employees', [AdminController::class, 'storeEmployee']);

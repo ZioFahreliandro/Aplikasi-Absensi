@@ -1,6 +1,20 @@
 // Global Variables
 let currentStream = null;
 let pendingAttendanceType = null;
+let officeSettings = {
+  office_name: '',
+  office_lat: null,
+  office_lng: null,
+  office_radius: 100,
+  office_ip: '127.0.0.1',
+  enable_gps: false,
+  enable_ip: false,
+};
+let currentIp = null;
+let userCoords = {
+  lat: null,
+  lng: null,
+};
 
 // DOM Elements
 const btnClockIn = document.getElementById('btn-clock-in');
@@ -32,22 +46,25 @@ const MONTHS = [
 document.addEventListener('DOMContentLoaded', () => {
   // Initialize Lucide Icons
   lucide.createIcons();
-  
+
   // Start digital clock
   initClock();
-  
-  
+  fetchSettings();
+  detectNetwork();
+  initLocationTracking();
+
+
   // Setup Camera listeners
-  btnInitCamera.addEventListener('click', initCamera);
-  btnToggleCamera.addEventListener('click', toggleCamera);
-  
+  if (btnInitCamera) btnInitCamera.addEventListener('click', initCamera);
+  if (btnToggleCamera) btnToggleCamera.addEventListener('click', toggleCamera);
+
   // Setup Navigation
   setupNavigation();
-  
+
   // Setup Attendance actions
-  btnClockIn.addEventListener('click', () => selectAttendanceType('masuk'));
-  btnClockOut.addEventListener('click', () => selectAttendanceType('pulang'));
-  btnSubmitAttendance.addEventListener('click', () => submitAttendance());
+  if (btnClockIn) btnClockIn.addEventListener('click', () => selectAttendanceType('masuk'));
+  if (btnClockOut) btnClockOut.addEventListener('click', () => selectAttendanceType('pulang'));
+  if (btnSubmitAttendance) btnSubmitAttendance.addEventListener('click', () => submitAttendance());
 });
 
 // Navigation between Kiosk & Admin View
@@ -56,53 +73,55 @@ function setupNavigation() {
   const navAdmin = document.getElementById('nav-admin');
   const viewKiosk = document.getElementById('view-kiosk');
   const viewAdmin = document.getElementById('view-admin');
-  
+
+  if (!navKiosk || !viewKiosk) return;
+
   navKiosk.addEventListener('click', () => {
     navKiosk.classList.add('active');
-    navAdmin.classList.remove('active');
+    if (navAdmin) navAdmin.classList.remove('active');
     viewKiosk.classList.add('active');
-    viewAdmin.classList.remove('active');
+    if (viewAdmin) viewAdmin.classList.remove('active');
   });
-  
-  if (!navAdmin || !viewAdmin) {
-    return;
-  }
 
-  navAdmin.addEventListener('click', () => {
-    navAdmin.classList.add('active');
-    navKiosk.classList.remove('active');
-    viewAdmin.classList.add('active');
-    viewKiosk.classList.remove('active');
-    
-    // Stop camera stream when leaving kiosk to save CPU/battery
-    stopCamera();
-    
-    // Trigger admin fetch
-    if (window.initAdminPanel) {
-      window.initAdminPanel();
-    }
-  });
+  if (navAdmin && viewAdmin) {
+    navAdmin.addEventListener('click', () => {
+      navAdmin.classList.add('active');
+      navKiosk.classList.remove('active');
+      viewAdmin.classList.add('active');
+      viewKiosk.classList.remove('active');
+
+      // Stop camera stream when leaving kiosk to save CPU/battery
+      stopCamera();
+
+      // Trigger admin fetch
+      if (window.initAdminPanel) {
+        window.initAdminPanel();
+      }
+    });
+  }
 }
 
 // Digital Clock
 function initClock() {
+  if (!liveClock || !liveDate) return;
+
   function updateTime() {
     const now = new Date();
-    
+
     const hh = String(now.getHours()).padStart(2, '0');
     const mm = String(now.getMinutes()).padStart(2, '0');
     const ss = String(now.getSeconds()).padStart(2, '0');
-    
+
     liveClock.textContent = `${hh}:${mm}:${ss}`;
-    
+
     const dayName = DAYS[now.getDay()];
     const date = now.getDate();
     const monthName = MONTHS[now.getMonth()];
     const year = now.getFullYear();
-    
+
     liveDate.textContent = `${dayName}, ${date} ${monthName} ${year}`;
   }
-  
+
   updateTime();
   setInterval(updateTime, 1000);
 }
@@ -111,8 +130,9 @@ function initClock() {
 async function fetchSettings() {
   try {
     const res = await fetch('/api/settings');
+    if (!res.ok) return;
     officeSettings = await res.json();
-    
+
     // Trigger validation update if variables are available
     updateValidationStatus();
   } catch (error) {
@@ -124,31 +144,34 @@ async function fetchSettings() {
 async function detectNetwork() {
   try {
     const res = await fetch('/api/my-ip');
+    if (!res.ok) return;
     const data = await res.json();
     currentIp = data.ip;
-    
+
     // Set UI panel IP
     const infoCurrentIp = document.getElementById('info-current-ip');
     if (infoCurrentIp) infoCurrentIp.textContent = currentIp;
-    
+
     updateValidationStatus();
   } catch (error) {
     console.error("Gagal mendeteksi IP:", error);
-    txtIpDetails.innerHTML = `<i data-lucide="alert-circle"></i> Gagal terhubung ke deteksi IP server.`;
-    lucide.createIcons();
+    if (txtIpDetails) {
+      txtIpDetails.innerHTML = `<i data-lucide="alert-circle"></i> Gagal terhubung ke deteksi IP server.`;
+      lucide.createIcons();
+    }
   }
 }
 
 // Start Webcam Stream
 async function initCamera() {
   stopCamera();
-  
+
   try {
     if (cameraStatusBadge) {
       cameraStatusBadge.textContent = "INITIALIZING...";
       cameraStatusBadge.className = "badge-status offline";
     }
-    
+
     const constraints = {
       video: {
         width: { ideal: 640 },
@@ -157,27 +180,27 @@ async function initCamera() {
       },
       audio: false
     };
-    
+
     currentStream = await navigator.mediaDevices.getUserMedia(constraints);
-    videoWebcam.srcObject = currentStream;
-    
+    if (videoWebcam) videoWebcam.srcObject = currentStream;
+
     // Update UI states
-    cameraPlaceholder.style.display = 'none';
+    if (cameraPlaceholder) cameraPlaceholder.style.display = 'none';
     if (cameraStatusBadge) {
       cameraStatusBadge.textContent = "ONLINE";
       cameraStatusBadge.className = "badge-status online";
     }
-    cameraWrapper.classList.add('active');
-    
+    if (cameraWrapper) cameraWrapper.classList.add('active');
+
   } catch (error) {
     console.error("Gagal membuka kamera:", error);
     if (cameraStatusBadge) {
       cameraStatusBadge.textContent = "OFFLINE";
       cameraStatusBadge.className = "badge-status offline";
     }
-    cameraPlaceholder.style.display = 'flex';
-    cameraWrapper.classList.remove('active');
-    
+    if (cameraPlaceholder) cameraPlaceholder.style.display = 'flex';
+    if (cameraWrapper) cameraWrapper.classList.remove('active');
+
     showToast("Izin kamera ditolak atau tidak ada kamera terdeteksi.", "error");
   }
 }
@@ -204,46 +227,48 @@ function stopCamera() {
     currentStream.getTracks().forEach(track => track.stop());
     currentStream = null;
   }
-  videoWebcam.srcObject = null;
-  cameraPlaceholder.style.display = 'flex';
+  if (videoWebcam) videoWebcam.srcObject = null;
+  if (cameraPlaceholder) cameraPlaceholder.style.display = 'flex';
   if (cameraStatusBadge) {
     cameraStatusBadge.textContent = "OFFLINE";
     cameraStatusBadge.className = "badge-status offline";
   }
-  cameraWrapper.classList.remove('active', 'ready');
+  if (cameraWrapper) cameraWrapper.classList.remove('active', 'ready');
 }
 
 // GPS Geolocation Tracking
 function initLocationTracking() {
+  if (!txtGpsDetails) return;
+
   if (!navigator.geolocation) {
     txtGpsDetails.innerHTML = `<i data-lucide="alert-triangle"></i> GPS tidak didukung di browser ini.`;
     lucide.createIcons();
     return;
   }
-  
+
   // Watch position for continuous updates
   navigator.geolocation.watchPosition(
     (position) => {
       userCoords.lat = position.coords.latitude;
       userCoords.lng = position.coords.longitude;
-      
+
       // Update info panel in admin view if present
       const infoCurrentCoords = document.getElementById('info-current-coords');
       if (infoCurrentCoords) {
         infoCurrentCoords.textContent = `${userCoords.lat.toFixed(6)}, ${userCoords.lng.toFixed(6)}`;
       }
-      
+
       updateValidationStatus();
     },
     (error) => {
       console.warn("Kesalahan GPS Geolocation:", error);
       txtGpsDetails.innerHTML = `<i data-lucide="alert-triangle"></i> Gagal mendapat GPS: ${error.message}`;
-      
+
       const infoCurrentCoords = document.getElementById('info-current-coords');
       if (infoCurrentCoords) {
         infoCurrentCoords.textContent = "Izin Lokasi Ditolak";
       }
-      
+
       lucide.createIcons();
       updateValidationStatus();
     },
@@ -270,10 +295,11 @@ function getDistance(lat1, lon1, lat2, lon2) {
 // Update the validation statuses for GPS & IP in real-time
 function updateValidationStatus() {
   if (!officeSettings.office_name) return; // settings not loaded yet (Laravel format is snake_case: office_name)
-  
+  if (!badgeGps || !badgeIp || !txtGpsDetails || !txtIpDetails || !cameraWrapper) return;
+
   let gpsValid = true;
   let ipValid = true;
-  
+
   // 1. Geolocation Check
   if (officeSettings.enable_gps) {
     if (userCoords.lat === null || userCoords.lng === null) {
@@ -283,19 +309,19 @@ function updateValidationStatus() {
       txtGpsDetails.innerHTML = `<i data-lucide="map-pin"></i> Mengambil data GPS Anda...`;
     } else {
       const distance = getDistance(
-        userCoords.lat, 
-        userCoords.lng, 
-        officeSettings.office_lat, 
+        userCoords.lat,
+        userCoords.lng,
+        officeSettings.office_lat,
         officeSettings.office_lng
       );
       const roundedDist = Math.round(distance);
-      
+
       // Update settings info page status if open
       const infoCurrentDistance = document.getElementById('info-current-distance');
       if (infoCurrentDistance) {
         infoCurrentDistance.textContent = `${roundedDist} meter`;
       }
-      
+
       if (distance <= officeSettings.office_radius) {
         badgeGps.className = "indicator-badge success";
         badgeGps.innerHTML = `<span class="pulse-dot"></span> GPS: Di Dalam Area`;
@@ -311,12 +337,12 @@ function updateValidationStatus() {
     // GPS disabled in settings
     badgeGps.className = "indicator-badge success";
     badgeGps.innerHTML = `<span class="pulse-dot"></span> GPS: Bebas Akses`;
-    
+
     if (userCoords.lat !== null) {
       const distance = getDistance(
-        userCoords.lat, 
-        userCoords.lng, 
-        officeSettings.office_lat, 
+        userCoords.lat,
+        userCoords.lng,
+        officeSettings.office_lat,
         officeSettings.office_lng
       );
       txtGpsDetails.innerHTML = `<i data-lucide="map-pin"></i> Jarak Anda: ${Math.round(distance)}m (GPS dinonaktifkan)`;
@@ -324,7 +350,7 @@ function updateValidationStatus() {
       txtGpsDetails.innerHTML = `<i data-lucide="map-pin"></i> Lokasi GPS aktif (opsional)`;
     }
   }
-  
+
   // 2. IP Jaringan Check
   if (officeSettings.enable_ip) {
     if (!currentIp) {
@@ -348,22 +374,22 @@ function updateValidationStatus() {
     badgeIp.innerHTML = `<span class="pulse-dot"></span> IP Jaringan: Bebas Akses`;
     txtIpDetails.innerHTML = `<i data-lucide="globe"></i> IP Anda: ${currentIp || '127.0.0.1'} (IP dinonaktifkan)`;
   }
-  
+
   // If camera is active and constraints are satisfied, apply glowing state
   if (currentStream && gpsValid && ipValid) {
     cameraWrapper.classList.add('ready');
   } else {
     cameraWrapper.classList.remove('ready');
   }
-  
+
   lucide.createIcons();
 }
 
 function selectAttendanceType(type) {
   pendingAttendanceType = type;
 
-  btnClockIn.classList.toggle('active', type === 'masuk');
-  btnClockOut.classList.toggle('active', type === 'pulang');
+  if (btnClockIn) btnClockIn.classList.toggle('active', type === 'masuk');
+  if (btnClockOut) btnClockOut.classList.toggle('active', type === 'pulang');
 
   if (btnSubmitAttendance) {
     btnSubmitAttendance.disabled = false;
@@ -380,8 +406,8 @@ function selectAttendanceType(type) {
 
 function resetAttendanceSelection() {
   pendingAttendanceType = null;
-  btnClockIn.classList.remove('active');
-  btnClockOut.classList.remove('active');
+  if (btnClockIn) btnClockIn.classList.remove('active');
+  if (btnClockOut) btnClockOut.classList.remove('active');
 
   if (btnSubmitAttendance) {
     btnSubmitAttendance.disabled = true;
@@ -396,21 +422,21 @@ function resetAttendanceSelection() {
 
 // Capture Image from Webcam
 function captureSelfie() {
-  if (!currentStream) return null;
-  
+  if (!currentStream || !canvasPhoto || !videoWebcam) return null;
+
   // Set canvas size matching the webcam feed proportions
   canvasPhoto.width = videoWebcam.videoWidth || 640;
   canvasPhoto.height = videoWebcam.videoHeight || 640;
-  
+
   const ctx = canvasPhoto.getContext('2d');
-  
+
   // Draw the video frame to canvas
   // Since video is mirrored, we also mirror the canvas before drawing to get correct image orientation
   ctx.translate(canvasPhoto.width, 0);
   ctx.scale(-1, 1);
   ctx.drawImage(videoWebcam, 0, 0, canvasPhoto.width, canvasPhoto.height);
   ctx.setTransform(1, 0, 0, 1, 0, 0); // reset scale/translate
-  
+
   // Export as Base64 JPEG
   return canvasPhoto.toDataURL('image/jpeg', 0.85);
 }
@@ -427,27 +453,27 @@ async function submitAttendance(type = pendingAttendanceType) {
     showToast("Silakan aktifkan kamera dan izinkan akses webcam!", "error");
     return;
   }
-  
+
   // Capture image
   const selfieBase64 = captureSelfie();
   if (!selfieBase64) {
     showToast("Gagal mengambil gambar selfie. Coba lagi.", "error");
     return;
   }
-  
+
   // Disable buttons to prevent double submission
-  btnClockIn.disabled = true;
-  btnClockOut.disabled = true;
-  
+  if (btnClockIn) btnClockIn.disabled = true;
+  if (btnClockOut) btnClockOut.disabled = true;
+
   try {
     const payload = {
       type,
       selfie: selfieBase64
     };
-    
+
     // Fetch Laravel CSRF Token from Meta Tag
     const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-    
+
     const res = await fetch('/api/attendance', {
       method: 'POST',
       headers: {
@@ -456,17 +482,19 @@ async function submitAttendance(type = pendingAttendanceType) {
       },
       body: JSON.stringify(payload)
     });
-    
+
     const data = await res.json();
-    
+
     if (res.ok) {
       showToast(data.message, "success");
       resetAttendanceSelection();
       // Play a quick success visual effect by adding green flash to camera
-      cameraWrapper.style.borderColor = "var(--success)";
-      setTimeout(() => {
-        cameraWrapper.style.borderColor = "";
-      }, 1000);
+      if (cameraWrapper) {
+        cameraWrapper.style.borderColor = "var(--success)";
+        setTimeout(() => {
+          cameraWrapper.style.borderColor = "";
+        }, 1000);
+      }
     } else {
       showToast(data.error || "Gagal melakukan absensi", "error");
     }
@@ -474,36 +502,37 @@ async function submitAttendance(type = pendingAttendanceType) {
     console.error("Gagal melakukan absensi:", error);
     showToast("Terjadi kesalahan jaringan saat mengirim absensi", "error");
   } finally {
-    btnClockIn.disabled = false;
-    btnClockOut.disabled = false;
+    if (btnClockIn) btnClockIn.disabled = false;
+    if (btnClockOut) btnClockOut.disabled = false;
   }
 }
 
 // Toast Notifications Helper
 function showToast(message, type = 'info') {
   const container = document.getElementById('toast-container');
+  if (!container) return;
   const toast = document.createElement('div');
   toast.className = `toast ${type}`;
-  
+
   let iconName = 'info';
   if (type === 'success') iconName = 'check-circle';
   if (type === 'error') iconName = 'alert-triangle';
-  
+
   toast.innerHTML = `
     <div class="toast-icon">
       <i data-lucide="${iconName}"></i>
     </div>
     <div class="toast-message">${message}</div>
   `;
-  
+
   container.appendChild(toast);
   lucide.createIcons();
-  
+
   // Animation delay to slide in
   setTimeout(() => {
     toast.classList.add('show');
   }, 10);
-  
+
   // Auto remove after 4 seconds
   setTimeout(() => {
     toast.classList.remove('show');

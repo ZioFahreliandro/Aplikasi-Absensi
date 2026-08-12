@@ -6,29 +6,44 @@
     <title>Login Absensi</title>
     <link rel="stylesheet" href="{{ asset('css/style.css') }}">
 </head>
-<body>
-    <main class="app-container" style="display:flex; justify-content:center; align-items:center; min-height:100vh;">
-        <div class="card" style="max-width:480px; width:100%; text-align:center;">
-            <h2 style="margin:0 0 0.5rem; text-align:center; width:100%;">Login Absensi</h2>
-            <p style="margin-bottom:1.5rem; color:#666;">Masukkan NIP dan password yang telah dibuat admin.</p>
+<body class="auth-page">
+    <main class="auth-shell">
+        <section class="auth-card">
+            <header class="auth-header">
+                <div class="auth-badge">Sistem Absensi</div>
+                <h1 class="auth-title">Login Absensi</h1>
+                <p class="auth-copy">Masukkan NIP dan password yang telah dibuat admin untuk masuk ke sistem.</p>
+            </header>
 
-            @if ($errors->any())
-                <div style="margin-bottom:1rem; color:#b91c1c;">{{ $errors->first() }}</div>
-            @endif
+            <div class="auth-body">
+                @if ($errors->any())
+                    <div class="alert">
+                        {{ $errors->first() }}
+                    </div>
+                @endif
 
-            <form method="POST" action="{{ route('login.post') }}" class="app-form">
-                @csrf
-                <div class="form-group" style="text-align:left;">
-                    <label for="nip">NIP</label>
-                    <input type="text" id="nip" name="nip" class="input-field" required>
+                <form method="POST" action="{{ route('login.post') }}" class="app-form">
+                    @csrf
+                    <div class="form-group">
+                        <label for="nip">NIP</label>
+                        <input type="text" id="nip" name="nip" class="input-field" required autofocus>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="password">Password</label>
+                        <input type="password" id="password" name="password" class="input-field" required>
+                    </div>
+
+                    <button type="submit" class="btn-primary" style="width: 100%; justify-content: center;">
+                        Login
+                    </button>
+                </form>
+
+                <div class="auth-footer">
+                    Gunakan akun karyawan yang terdaftar atau akun admin yang disiapkan sistem.
                 </div>
-                <div class="form-group" style="text-align:left;">
-                    <label for="password">Password</label>
-                    <input type="password" id="password" name="password" class="input-field" required>
-                </div class=>
-                <button type="submit" class="btn-primary" style="width:100%; justify-content:center;">Login</button>
-            </form>
-        </div>
+            </div>
+        </section>
     </main>
 </body>
 </html>

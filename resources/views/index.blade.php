@@ -83,6 +83,27 @@
               <p id="attendance-selection-help" class="camera-tip" style="margin-top: 10px;">Pilih aksi Masuk atau Pulang dulu, lalu ambil foto.</p>
             </form>
           </div>
+
+          <div class="card status-summary-card">
+            <div class="status-indicator-row">
+              <div id="badge-gps" class="indicator-badge danger">
+                <span class="pulse-dot"></span> GPS: Memuat...
+              </div>
+              <div id="badge-ip" class="indicator-badge danger">
+                <span class="pulse-dot"></span> IP Jaringan: Memuat...
+              </div>
+            </div>
+            <div class="status-text-details">
+              <p id="txt-gps-details">
+                <i data-lucide="map-pin"></i>
+                Mendeteksi lokasi GPS Anda...
+              </p>
+              <p id="txt-ip-details">
+                <i data-lucide="globe"></i>
+                Mendeteksi IP jaringan Anda...
+              </p>
+            </div>
+          </div>
         </div>
 
         <!-- Right Side: Live Selfie Preview Frame -->
@@ -90,6 +111,7 @@
           <div class="card camera-card">
             <div class="camera-header">
               <h2>Kamera Pengenal</h2>
+              <span id="camera-status-badge" class="badge-status offline">OFFLINE</span>
             </div>
 
             <div class="camera-frame-container">
@@ -440,7 +462,6 @@
       </div>
     </section>
     @endcan
-
   </main>
 
   <!-- Photo Preview Modal -->

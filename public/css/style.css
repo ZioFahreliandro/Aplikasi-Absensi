@@ -227,141 +227,93 @@ body {
 /* 1. KIOSK GRID */
 .kiosk-grid {
   display: grid;
-  grid-template-columns: 1.1fr 0.9fr;
-  gap: 2.5rem;
+  grid-template-columns: 1.15fr 1fr;
+  gap: 1.5rem;
   align-items: start;
 }
 
-.kiosk-left {
+.kiosk-left, .kiosk-right {
   display: flex;
   flex-direction: column;
-  gap: 2rem;
-}
-
-/* Clock Card */
-.clock-card {
-  display: flex;
-  align-items: center;
   gap: 1.5rem;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(248, 248, 248, 0.96) 100%);
-  border-left: 4px solid var(--primary);
 }
 
-.clock-icon {
-  background: rgba(47, 47, 47, 0.06);
-  color: var(--primary);
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  display: flex;
+@media (max-width: 1100px) {
+  .kiosk-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Auth page */
+.auth-page {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 2rem;
+  background:
+    radial-gradient(circle at top left, rgba(59, 130, 246, 0.16), transparent 18%),
+    radial-gradient(circle at bottom right, rgba(16, 185, 129, 0.14), transparent 18%),
+    linear-gradient(180deg, rgba(15, 23, 42, 1) 0%, rgba(18, 32, 52, 1) 100%);
+}
+
+.auth-shell {
+  width: min(100%, 560px);
+}
+
+.auth-card {
+  background: rgba(15, 23, 42, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 28px;
+  box-shadow: var(--shadow-md);
+  backdrop-filter: blur(18px);
+  overflow: hidden;
+}
+
+.auth-header {
+  padding: 2rem;
+  background: linear-gradient(135deg, rgba(79, 70, 229, 0.95), rgba(14, 165, 233, 0.9));
+  color: white;
+}
+
+.auth-badge {
+  display: inline-flex;
   align-items: center;
-  justify-content: center;
-}
-
-.clock-icon i {
-  width: 28px;
-  height: 28px;
-}
-
-.time-display {
-  font-family: var(--font-display);
-  font-size: 2.5rem;
-  font-weight: 700;
-  letter-spacing: 1px;
-  color: var(--text-dark);
-  line-height: 1.1;
-}
-
-.date-display {
-  font-size: 0.95rem;
-  color: var(--text-muted);
-  font-weight: 500;
-  margin-top: 0.25rem;
-}
-
-/* App Forms */
-.app-form {
-  display: flex;
-  flex-direction: column;
-  gap: 1.25rem;
-}
-
-.form-group {
-  display: flex;
-  flex-direction: column;
   gap: 0.5rem;
-}
-
-.form-group label {
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: var(--text-muted);
+  padding: 0.45rem 0.9rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+  font-size: 0.8rem;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.12em;
+  font-weight: 700;
 }
 
-.input-field, select {
-  width: 100%;
-  padding: 0.75rem 1rem;
-  background: rgba(15, 23, 42, 0.5);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-sm);
-  color: white;
-  font-family: var(--font-main);
-  font-size: 0.95rem;
-  outline: none;
-  transition: all 0.3s ease;
-}
-
-.input-field:focus, select:focus {
-  border-color: var(--border-focus);
-  box-shadow: 0 0 10px rgba(37, 99, 235, 0.16);
-  background: rgba(15, 23, 42, 0.7);
-}
-
-.select-wrapper {
-  position: relative;
-}
-
-.select-wrapper select {
-  appearance: none;
-  cursor: pointer;
-  padding-right: 2.5rem;
-}
-
-.select-wrapper::after {
-  content: "▼";
-  font-size: 0.7rem;
-  color: var(--text-muted);
-  position: absolute;
-  right: 1.2rem;
-  top: 50%;
-  transform: translateY(-50%);
-  pointer-events: none;
-}
-
-/* PIN Input Specifics */
-.pin-input-container {
-  display: flex;
-  justify-content: center;
-}
-
-.pin-input-container input {
+.auth-title {
+  margin-top: 1.25rem;
   font-family: var(--font-display);
-  font-size: 2rem;
-  text-align: center;
-  letter-spacing: 0.5rem;
-  max-width: 160px;
-  background: rgba(15, 23, 42, 0.6);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-sm);
-  color: white;
-  padding: 0.5rem;
+  font-size: clamp(2rem, 3vw, 2.75rem);
+  line-height: 1.05;
+  font-weight: 800;
 }
 
-.pin-input-container input:focus {
-  border-color: var(--border-focus);
-  box-shadow: 0 0 15px rgba(37, 99, 235, 0.2);
+.auth-copy {
+  margin-top: 0.75rem;
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 1rem;
+  max-width: 38rem;
+  line-height: 1.7;
+}
+
+.auth-body {
+  padding: 2rem;
+  display: grid;
+  gap: 1.5rem;
+}
+
+.auth-footer {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.95rem;
+  text-align: center;
 }
 
 /* Status Summary Card */
@@ -1414,3 +1366,4 @@ input:checked + .slider:before {
     grid-template-columns: 1fr;
   }
 }
+
