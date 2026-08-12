@@ -90,7 +90,9 @@ class AdminController extends Controller
                 'office_lat' => -6.200000,
                 'office_lng' => 106.816666,
                 'office_radius' => 100,
-                'office_ip' => '127.0.0.1',
+                'office_checkin_time' => '08:00:00',
+                'office_checkout_time' => '17:00:00',
+                'office_ip' => null,
                 'enable_gps' => false,
                 'enable_ip' => false
             ]);
@@ -112,12 +114,32 @@ class AdminController extends Controller
         $settings->office_lat = (double) $request->input('officeLat', -6.200000);
         $settings->office_lng = (double) $request->input('officeLng', 106.816666);
         $settings->office_radius = (int) $request->input('officeRadius', 100);
-        $settings->office_ip = $request->input('officeIp', '127.0.0.1');
+        $settings->office_checkin_time = $this->normalizeTime($request->input('officeCheckinTime', '08:00'));
+        $settings->office_checkout_time = $this->normalizeTime($request->input('officeCheckoutTime', '17:00'));
         $settings->enable_gps = (bool) $request->input('enableGps', false);
-        $settings->enable_ip = (bool) $request->input('enableIp', false);
+        $settings->enable_ip = false;
+        $settings->office_ip = null;
         $settings->save();
 
         return response()->json($settings);
+    }
+
+    /**
+     * Normalize time input from admin form.
+     */
+    private function normalizeTime(?string $time): string
+    {
+        $time = trim((string) $time);
+
+        if ($time === '') {
+            return '00:00:00';
+        }
+
+        if (preg_match('/^\d{2}:\d{2}$/', $time)) {
+            return $time . ':00';
+        }
+
+        return $time;
     }
 
     /**

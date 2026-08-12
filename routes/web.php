@@ -18,7 +18,6 @@ Route::middleware('auth')->group(function () {
         return view('index');
     })->middleware('can:access-admin')->name('admin');
 
-    Route::get('/api/my-ip', [AttendanceController::class, 'myIp']);
     Route::get('/api/settings', [AdminController::class, 'getSettings']);
     Route::post('/api/attendance', [AttendanceController::class, 'store']);
 });

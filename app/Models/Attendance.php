@@ -18,7 +18,8 @@ class Attendance extends Model
         'longitude',
         'distance',
         'ip_address',
-        'status'
+        'status',
+        'attendance_note'
     ];
 
     /**

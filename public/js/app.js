@@ -6,12 +6,9 @@ let officeSettings = {
   office_lat: null,
   office_lng: null,
   office_radius: 100,
-  office_ip: '127.0.0.1',
   enable_gps: false,
-  enable_ip: false,
 };
-let currentIp = null;
-let userCoords = {
+let currentCoords = {
   lat: null,
   lng: null,
 };
@@ -21,12 +18,9 @@ const btnClockIn = document.getElementById('btn-clock-in');
 const btnClockOut = document.getElementById('btn-clock-out');
 const btnSubmitAttendance = document.getElementById('btn-submit-attendance');
 const attendanceSelectionHelp = document.getElementById('attendance-selection-help');
+const locationStatus = document.getElementById('location-status');
 const liveClock = document.getElementById('live-clock');
 const liveDate = document.getElementById('live-date');
-const badgeGps = document.getElementById('badge-gps');
-const badgeIp = document.getElementById('badge-ip');
-const txtGpsDetails = document.getElementById('txt-gps-details');
-const txtIpDetails = document.getElementById('txt-ip-details');
 const videoWebcam = document.getElementById('webcam');
 const canvasPhoto = document.getElementById('photo-canvas');
 const cameraPlaceholder = document.getElementById('camera-placeholder');
@@ -50,7 +44,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Start digital clock
   initClock();
   fetchSettings();
-  detectNetwork();
+  setLocationGateState(false);
   initLocationTracking();
 
 
@@ -126,40 +120,76 @@ function initClock() {
   setInterval(updateTime, 1000);
 }
 
-// Fetch settings from API
 async function fetchSettings() {
   try {
     const res = await fetch('/api/settings');
     if (!res.ok) return;
     officeSettings = await res.json();
-
-    // Trigger validation update if variables are available
-    updateValidationStatus();
   } catch (error) {
     console.error("Gagal mengambil pengaturan kantor:", error);
   }
 }
 
-// Detect Client Public Network IP
-async function detectNetwork() {
-  try {
-    const res = await fetch('/api/my-ip');
-    if (!res.ok) return;
-    const data = await res.json();
-    currentIp = data.ip;
-
-    // Set UI panel IP
-    const infoCurrentIp = document.getElementById('info-current-ip');
-    if (infoCurrentIp) infoCurrentIp.textContent = currentIp;
-
-    updateValidationStatus();
-  } catch (error) {
-    console.error("Gagal mendeteksi IP:", error);
-    if (txtIpDetails) {
-      txtIpDetails.innerHTML = `<i data-lucide="alert-circle"></i> Gagal terhubung ke deteksi IP server.`;
-      lucide.createIcons();
-    }
+function initLocationTracking() {
+  if (!navigator.geolocation) {
+    setLocationGateState(false, 'Perangkat ini belum mendukung lokasi. Coba pakai browser atau ponsel yang mendukung GPS.');
+    return;
   }
+
+  navigator.geolocation.watchPosition(
+    (position) => {
+      currentCoords.lat = position.coords.latitude;
+      currentCoords.lng = position.coords.longitude;
+      setLocationGateState(true);
+    },
+    (error) => {
+      console.warn("GPS tidak aktif atau ditolak:", error);
+      currentCoords.lat = null;
+      currentCoords.lng = null;
+      setLocationGateState(false, 'Lokasi belum aktif. Silakan nyalakan GPS dan beri izin akses lokasi dulu.');
+    },
+    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+  );
+}
+
+function hasActiveLocation() {
+  return currentCoords.lat !== null && currentCoords.lng !== null;
+}
+
+function refreshAttendanceButtonState() {
+  if (btnClockIn) btnClockIn.disabled = !hasActiveLocation();
+  if (btnClockOut) btnClockOut.disabled = !hasActiveLocation();
+
+  if (btnSubmitAttendance) {
+    btnSubmitAttendance.disabled = !hasActiveLocation() || !pendingAttendanceType;
+  }
+}
+
+function setLocationGateState(isActive, message) {
+  refreshAttendanceButtonState();
+
+  if (locationStatus) {
+    locationStatus.textContent = message || (
+      isActive
+        ? 'Lokasi aktif. Kamu sudah bisa pilih Masuk atau Pulang.'
+        : 'Lokasi belum aktif. Silakan nyalakan GPS dan beri izin akses lokasi dulu.'
+    );
+  }
+}
+
+function getDistance(lat1, lon1, lat2, lon2) {
+  const R = 6371e3;
+  const radLat1 = (lat1 * Math.PI) / 180;
+  const radLat2 = (lat2 * Math.PI) / 180;
+  const diffLat = ((lat2 - lat1) * Math.PI) / 180;
+  const diffLon = ((lon2 - lon1) * Math.PI) / 180;
+
+  const a = Math.sin(diffLat / 2) * Math.sin(diffLat / 2) +
+            Math.cos(radLat1) * Math.cos(radLat2) *
+            Math.sin(diffLon / 2) * Math.sin(diffLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+  return R * c;
 }
 
 // Start Webcam Stream
@@ -236,156 +266,12 @@ function stopCamera() {
   if (cameraWrapper) cameraWrapper.classList.remove('active', 'ready');
 }
 
-// GPS Geolocation Tracking
-function initLocationTracking() {
-  if (!txtGpsDetails) return;
-
-  if (!navigator.geolocation) {
-    txtGpsDetails.innerHTML = `<i data-lucide="alert-triangle"></i> GPS tidak didukung di browser ini.`;
-    lucide.createIcons();
+function selectAttendanceType(type) {
+  if (!hasActiveLocation()) {
+    showToast('Silakan aktifkan GPS dan izinkan akses lokasi terlebih dahulu.', 'error');
     return;
   }
 
-  // Watch position for continuous updates
-  navigator.geolocation.watchPosition(
-    (position) => {
-      userCoords.lat = position.coords.latitude;
-      userCoords.lng = position.coords.longitude;
-
-      // Update info panel in admin view if present
-      const infoCurrentCoords = document.getElementById('info-current-coords');
-      if (infoCurrentCoords) {
-        infoCurrentCoords.textContent = `${userCoords.lat.toFixed(6)}, ${userCoords.lng.toFixed(6)}`;
-      }
-
-      updateValidationStatus();
-    },
-    (error) => {
-      console.warn("Kesalahan GPS Geolocation:", error);
-      txtGpsDetails.innerHTML = `<i data-lucide="alert-triangle"></i> Gagal mendapat GPS: ${error.message}`;
-
-      const infoCurrentCoords = document.getElementById('info-current-coords');
-      if (infoCurrentCoords) {
-        infoCurrentCoords.textContent = "Izin Lokasi Ditolak";
-      }
-
-      lucide.createIcons();
-      updateValidationStatus();
-    },
-    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-  );
-}
-
-// Haversine client-side helper to display distance
-function getDistance(lat1, lon1, lat2, lon2) {
-  const R = 6371e3; // Earth's radius in meters
-  const radLat1 = (lat1 * Math.PI) / 180;
-  const radLat2 = (lat2 * Math.PI) / 180;
-  const diffLat = ((lat2 - lat1) * Math.PI) / 180;
-  const diffLon = ((lon2 - lon1) * Math.PI) / 180;
-
-  const a = Math.sin(diffLat / 2) * Math.sin(diffLat / 2) +
-            Math.cos(radLat1) * Math.cos(radLat2) *
-            Math.sin(diffLon / 2) * Math.sin(diffLon / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
-  return R * c; // in meters
-}
-
-// Update the validation statuses for GPS & IP in real-time
-function updateValidationStatus() {
-  if (!officeSettings.office_name) return; // settings not loaded yet (Laravel format is snake_case: office_name)
-  if (!badgeGps || !badgeIp || !txtGpsDetails || !txtIpDetails || !cameraWrapper) return;
-
-  let gpsValid = true;
-  let ipValid = true;
-
-  // 1. Geolocation Check
-  if (officeSettings.enable_gps) {
-    if (userCoords.lat === null || userCoords.lng === null) {
-      gpsValid = false;
-      badgeGps.className = "indicator-badge danger";
-      badgeGps.innerHTML = `<span class="pulse-dot"></span> GPS: Di Luar Jangkauan`;
-      txtGpsDetails.innerHTML = `<i data-lucide="map-pin"></i> Mengambil data GPS Anda...`;
-    } else {
-      const distance = getDistance(
-        userCoords.lat,
-        userCoords.lng,
-        officeSettings.office_lat,
-        officeSettings.office_lng
-      );
-      const roundedDist = Math.round(distance);
-
-      // Update settings info page status if open
-      const infoCurrentDistance = document.getElementById('info-current-distance');
-      if (infoCurrentDistance) {
-        infoCurrentDistance.textContent = `${roundedDist} meter`;
-      }
-
-      if (distance <= officeSettings.office_radius) {
-        badgeGps.className = "indicator-badge success";
-        badgeGps.innerHTML = `<span class="pulse-dot"></span> GPS: Di Dalam Area`;
-        txtGpsDetails.innerHTML = `<i data-lucide="map-pin"></i> Jarak ke kantor: <strong>${roundedDist}m</strong> (Batas: ${officeSettings.office_radius}m)`;
-      } else {
-        gpsValid = false;
-        badgeGps.className = "indicator-badge danger";
-        badgeGps.innerHTML = `<span class="pulse-dot"></span> GPS: Di Luar Jangkauan`;
-        txtGpsDetails.innerHTML = `<i data-lucide="map-pin"></i> Jarak Anda: <strong>${roundedDist}m</strong> (Batas: ${officeSettings.office_radius}m)`;
-      }
-    }
-  } else {
-    // GPS disabled in settings
-    badgeGps.className = "indicator-badge success";
-    badgeGps.innerHTML = `<span class="pulse-dot"></span> GPS: Bebas Akses`;
-
-    if (userCoords.lat !== null) {
-      const distance = getDistance(
-        userCoords.lat,
-        userCoords.lng,
-        officeSettings.office_lat,
-        officeSettings.office_lng
-      );
-      txtGpsDetails.innerHTML = `<i data-lucide="map-pin"></i> Jarak Anda: ${Math.round(distance)}m (GPS dinonaktifkan)`;
-    } else {
-      txtGpsDetails.innerHTML = `<i data-lucide="map-pin"></i> Lokasi GPS aktif (opsional)`;
-    }
-  }
-
-  // 2. IP Jaringan Check
-  if (officeSettings.enable_ip) {
-    if (!currentIp) {
-      ipValid = false;
-      badgeIp.className = "indicator-badge danger";
-      badgeIp.innerHTML = `<span class="pulse-dot"></span> IP Jaringan: Tidak Valid`;
-      txtIpDetails.innerHTML = `<i data-lucide="globe"></i> Mendeteksi IP Anda...`;
-    } else if (currentIp === officeSettings.office_ip || officeSettings.office_ip === '127.0.0.1') {
-      badgeIp.className = "indicator-badge success";
-      badgeIp.innerHTML = `<span class="pulse-dot"></span> IP Jaringan: Valid`;
-      txtIpDetails.innerHTML = `<i data-lucide="globe"></i> Terhubung ke jaringan kantor (IP: ${currentIp})`;
-    } else {
-      ipValid = false;
-      badgeIp.className = "indicator-badge danger";
-      badgeIp.innerHTML = `<span class="pulse-dot"></span> IP Jaringan: Tidak Valid`;
-      txtIpDetails.innerHTML = `<i data-lucide="globe"></i> IP Anda: ${currentIp} (Harus IP Kantor: ${officeSettings.office_ip})`;
-    }
-  } else {
-    // IP disabled in settings
-    badgeIp.className = "indicator-badge success";
-    badgeIp.innerHTML = `<span class="pulse-dot"></span> IP Jaringan: Bebas Akses`;
-    txtIpDetails.innerHTML = `<i data-lucide="globe"></i> IP Anda: ${currentIp || '127.0.0.1'} (IP dinonaktifkan)`;
-  }
-
-  // If camera is active and constraints are satisfied, apply glowing state
-  if (currentStream && gpsValid && ipValid) {
-    cameraWrapper.classList.add('ready');
-  } else {
-    cameraWrapper.classList.remove('ready');
-  }
-
-  lucide.createIcons();
-}
-
-function selectAttendanceType(type) {
   pendingAttendanceType = type;
 
   if (btnClockIn) btnClockIn.classList.toggle('active', type === 'masuk');
@@ -416,8 +302,10 @@ function resetAttendanceSelection() {
   }
 
   if (attendanceSelectionHelp) {
-    attendanceSelectionHelp.textContent = 'Pilih aksi Masuk atau Pulang dulu, lalu ambil foto.';
+    attendanceSelectionHelp.textContent = 'Pilih Masuk atau Pulang dulu, lalu lanjut ambil foto.';
   }
+
+  refreshAttendanceButtonState();
 }
 
 // Capture Image from Webcam
@@ -444,7 +332,16 @@ function captureSelfie() {
 // Submit Attendance Transaction
 async function submitAttendance(type = pendingAttendanceType) {
   if (!type) {
-    showToast("Pilih aksi Masuk atau Pulang terlebih dahulu.", "info");
+    showToast("Silakan pilih Masuk atau Pulang terlebih dahulu.", "info");
+    return;
+  }
+
+  if (!officeSettings.office_name) {
+    await fetchSettings();
+  }
+
+  if (!hasActiveLocation()) {
+    showToast("Silakan nyalakan GPS dan izinkan lokasi sebelum absen.", "error");
     return;
   }
 
@@ -452,6 +349,30 @@ async function submitAttendance(type = pendingAttendanceType) {
   if (!currentStream) {
     showToast("Silakan aktifkan kamera dan izinkan akses webcam!", "error");
     return;
+  }
+
+  if (officeSettings.enable_gps) {
+    if (
+      currentCoords.lat === null ||
+      currentCoords.lng === null ||
+      officeSettings.office_lat === null ||
+      officeSettings.office_lng === null
+    ) {
+      showToast("Lokasi belum aktif. Silakan beri izin akses lokasi terlebih dahulu.", "error");
+      return;
+    }
+
+    const distance = getDistance(
+      currentCoords.lat,
+      currentCoords.lng,
+      officeSettings.office_lat,
+      officeSettings.office_lng
+    );
+
+    if (distance > officeSettings.office_radius) {
+      showToast(`Anda masih ${Math.round(distance)} meter dari kantor. Radius maksimal ${officeSettings.office_radius} meter.`, "error");
+      return;
+    }
   }
 
   // Capture image
@@ -468,7 +389,9 @@ async function submitAttendance(type = pendingAttendanceType) {
   try {
     const payload = {
       type,
-      selfie: selfieBase64
+      selfie: selfieBase64,
+      latitude: currentCoords.lat,
+      longitude: currentCoords.lng
     };
 
     // Fetch Laravel CSRF Token from Meta Tag

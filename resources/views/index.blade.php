@@ -29,9 +29,11 @@
       </div>
     </div>
     <nav class="header-nav">
+      @cannot('access-admin')
       <button id="nav-kiosk" class="nav-btn active">
         <i data-lucide="camera"></i> Absen
       </button>
+      @endcannot
       @can('access-admin')
         <button id="nav-admin" class="nav-btn">
           <i data-lucide="layout-dashboard"></i> Admin
@@ -49,6 +51,7 @@
   <main class="app-container">
 
     <!-- 1. KIOSK ABSEN VIEW -->
+    @cannot('access-admin')
     <section id="view-kiosk" class="view-section active">
       <div class="kiosk-grid">
 
@@ -66,43 +69,23 @@
           </div>
 
           <!-- Attendance Action Card -->
-          <div class="card attendance-card">
+              <div class="card attendance-card">
             <h2 class="section-title">Absensi</h2>
             <p class="section-subtitle">Ambil foto selfie untuk melakukan absensi.</p>
 
             <form id="attendance-form" class="app-form">
               <!-- Clock In/Out buttons -->
               <div class="attendance-actions">
-                <button type="button" id="btn-clock-in" class="action-btn clock-in-btn">
+                <button type="button" id="btn-clock-in" class="action-btn clock-in-btn" disabled>
                   <i data-lucide="log-in"></i> Masuk
                 </button>
-                <button type="button" id="btn-clock-out" class="action-btn clock-out-btn">
+                <button type="button" id="btn-clock-out" class="action-btn clock-out-btn" disabled>
                   <i data-lucide="log-out"></i> Pulang
                 </button>
               </div>
-              <p id="attendance-selection-help" class="camera-tip" style="margin-top: 10px;">Pilih aksi Masuk atau Pulang dulu, lalu ambil foto.</p>
+              <p id="location-status" class="camera-tip">Lokasi belum aktif. Silakan nyalakan GPS dan beri izin akses lokasi dulu.</p>
+              <p id="attendance-selection-help" class="camera-tip" style="margin-top: 10px;">Pilih Masuk atau Pulang dulu, lalu lanjut ambil foto.</p>
             </form>
-          </div>
-
-          <div class="card status-summary-card">
-            <div class="status-indicator-row">
-              <div id="badge-gps" class="indicator-badge danger">
-                <span class="pulse-dot"></span> GPS: Memuat...
-              </div>
-              <div id="badge-ip" class="indicator-badge danger">
-                <span class="pulse-dot"></span> IP Jaringan: Memuat...
-              </div>
-            </div>
-            <div class="status-text-details">
-              <p id="txt-gps-details">
-                <i data-lucide="map-pin"></i>
-                Mendeteksi lokasi GPS Anda...
-              </p>
-              <p id="txt-ip-details">
-                <i data-lucide="globe"></i>
-                Mendeteksi IP jaringan Anda...
-              </p>
-            </div>
           </div>
         </div>
 
@@ -136,17 +119,17 @@
                   <i data-lucide="camera"></i> Ambil Foto & Kirim
                 </button>
               </div>
-              <p class="camera-tip">Posisikan wajah Anda tepat di dalam lingkaran</p>
+              <p class="camera-tip">Posisikan wajah Anda tepat di dalam kotak</p>
             </div>
           </div>
         </div>
-
       </div>
     </section>
+    @endcannot
 
     @can('access-admin')
     <!-- 2. ADMIN DASHBOARD VIEW -->
-    <section id="view-admin" class="view-section">
+    <section id="view-admin" class="view-section active">
       <div class="admin-layout">
 
         <!-- Sidebar Navigation for Admin Sections -->
@@ -227,8 +210,8 @@
                       <th>Tanggal</th>
                       <th>Waktu</th>
                       <th>Tipe</th>
+                      <th>Keterangan</th>
                       <th>Selfie</th>
-                      <th>Status Validasi</th>
                     </tr>
                   </thead>
                   <tbody id="recap-table-body">
@@ -310,8 +293,8 @@
           <div id="sub-view-settings" class="sub-view">
             <div class="sub-view-header">
               <div>
-                <h2>Pengaturan Lokasi & Jaringan Kantor</h2>
-                <p>Atur batas jangkauan GPS, koordinat kantor, dan IP address kantor yang diizinkan.</p>
+                <h2>Pengaturan Lokasi Kantor</h2>
+                <p>Atur batas jangkauan GPS dan koordinat kantor yang diizinkan.</p>
               </div>
             </div>
 
@@ -319,7 +302,7 @@
 
               <!-- Settings Form Card -->
               <div class="card settings-form-card">
-                <h3>Konfigurasi Pembatasan Akses</h3>
+                <h3>Konfigurasi Pembatasan GPS</h3>
                 <form id="settings-form" class="app-form">
 
                   <div class="form-group">
@@ -338,19 +321,6 @@
                         <div class="toggle-label-text">
                           <span class="toggle-title">Batasi Berdasarkan GPS</span>
                           <span class="toggle-desc">Hanya izinkan absen jika berada di radius koordinat kantor.</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div class="toggle-group">
-                      <div class="toggle-control">
-                        <label class="switch">
-                          <input type="checkbox" id="set-enable-ip">
-                          <span class="slider round"></span>
-                        </label>
-                        <div class="toggle-label-text">
-                          <span class="toggle-title">Batasi Berdasarkan IP Kantor</span>
-                          <span class="toggle-desc">Hanya izinkan absen dari jaringan internet WiFi kantor.</span>
                         </div>
                       </div>
                     </div>
@@ -377,26 +347,27 @@
                     <input type="number" id="set-office-radius" class="input-field" placeholder="100" min="10" required>
                   </div>
 
-                  <div class="helper-buttons">
-                    <button type="button" id="btn-get-current-coords" class="btn-outline-info">
-                      <i data-lucide="map-pin"></i> Gunakan Koordinat Saya Saat Ini
-                    </button>
-                  </div>
-
                   <hr class="form-divider">
 
-                  <!-- Network Config -->
-                  <h4 class="settings-section-title"><i data-lucide="globe"></i> Alamat IP Jaringan</h4>
+                  <!-- Work Schedule -->
+                  <h4 class="settings-section-title"><i data-lucide="clock-3"></i> Jam Kerja</h4>
 
-                  <div class="form-group">
-                    <label for="set-office-ip">IP Address Kantor Terdaftar</label>
-                    <input type="text" id="set-office-ip" class="input-field" placeholder="127.0.0.1" required>
-                    <p class="field-hint">Catatan: Untuk pengetesan lokal, gunakan <code>127.0.0.1</code> atau nonaktifkan pembatasan IP.</p>
+                  <div class="form-row-2">
+                    <div class="form-group">
+                      <label for="set-office-checkin-time">Jam Masuk</label>
+                      <input type="time" id="set-office-checkin-time" class="input-field" required>
+                    </div>
+                    <div class="form-group">
+                      <label for="set-office-checkout-time">Jam Pulang</label>
+                      <input type="time" id="set-office-checkout-time" class="input-field" required>
+                    </div>
                   </div>
 
+                  <p class="field-hint">Jika absen masuk lewat jam masuk, keterangan akan menjadi <strong>Telat Masuk</strong>. Jika absen pulang sebelum jam pulang, keterangan akan menjadi <strong>Pulang Cepat</strong>.</p>
+
                   <div class="helper-buttons">
-                    <button type="button" id="btn-get-current-ip" class="btn-outline-info">
-                      <i data-lucide="network"></i> Deteksi & Gunakan IP Saya Saat Ini
+                    <button type="button" id="btn-get-current-coords" class="btn-outline-info">
+                      <i data-lucide="map-pin"></i> Pilih Titik di Peta
                     </button>
                   </div>
 
@@ -413,16 +384,6 @@
               <div class="card info-settings-card">
                 <h3>Status Koneksi Anda Saat Ini</h3>
                 <div class="info-stat-list">
-                  <div class="info-stat-item">
-                    <div class="info-stat-icon">
-                      <i data-lucide="network"></i>
-                    </div>
-                    <div class="info-stat-details">
-                      <p class="info-label">IP Anda Sekarang:</p>
-                      <p id="info-current-ip" class="info-value">Mendeteksi...</p>
-                    </div>
-                  </div>
-
                   <div class="info-stat-item">
                     <div class="info-stat-icon">
                       <i data-lucide="map-pin"></i>
@@ -442,15 +403,26 @@
                       <p id="info-current-distance" class="info-value">Menghitung...</p>
                     </div>
                   </div>
+
+                  <div class="info-stat-item">
+                    <div class="info-stat-icon">
+                      <i data-lucide="clock-3"></i>
+                    </div>
+                    <div class="info-stat-details">
+                      <p class="info-label">Jadwal Kerja:</p>
+                      <p id="info-work-schedule" class="info-value">Mengambil jadwal...</p>
+                    </div>
+                  </div>
                 </div>
 
                 <div class="alert-info-box">
                   <h4><i data-lucide="info"></i> Tips Cara Pengetesan</h4>
                   <p>Jika ingin menyimulasikan pembatasan absensi di kantor:</p>
                   <ol>
-                    <li>Aktifkan <strong>Batasi Berdasarkan GPS</strong> & <strong>IP Kantor</strong>.</li>
-                    <li>Untuk mempermudah tes sukses, klik tombol <strong>"Gunakan Koordinat Saya Saat Ini"</strong> dan <strong>"Gunakan IP Saya Saat Ini"</strong> lalu Simpan Pengaturan.</li>
-                    <li>Sekarang Anda terdeteksi berada di dalam area kantor dan bisa melakukan absensi.</li>
+                    <li>Aktifkan <strong>Batasi Berdasarkan GPS</strong>.</li>
+                    <li>Klik tombol <strong>"Pilih Titik di Peta"</strong>.</li>
+                    <li>Klik titik lokasi kantor di peta, lalu klik <strong>"Simpan Titik Ini"</strong>.</li>
+                    <li>Terakhir, klik <strong>"Simpan Semua Pengaturan"</strong>.</li>
                   </ol>
                 </div>
               </div>
@@ -481,10 +453,52 @@
   <!-- Toast Notification System -->
   <div id="toast-container" class="toast-container"></div>
 
+  <!-- Location Picker Modal -->
+  <div id="modal-location-picker" class="modal">
+      <div class="modal-content modal-location-picker">
+      <span class="modal-close" id="close-location-picker">&times;</span>
+      <h3>Pilih Titik Kantor</h3>
+      <p class="location-picker-copy">Klik titik kantor di peta. Latitude dan longitude akan terisi otomatis.</p>
+
+      <div class="location-picker-meta">
+        <div>
+          <span class="location-picker-label">Latitude</span>
+          <strong id="picked-lat">-</strong>
+        </div>
+        <div>
+          <span class="location-picker-label">Longitude</span>
+          <strong id="picked-lng">-</strong>
+        </div>
+      </div>
+
+      <div
+        id="location-picker-map"
+        class="location-picker-map"
+        aria-label="Google Maps"
+      ></div>
+
+      <p id="location-picker-status" class="location-picker-status">Memuat peta Google Maps...</p>
+
+      <div class="location-picker-actions">
+        <button type="button" id="btn-use-current-location" class="btn-secondary">
+          Gunakan Lokasi Saya
+        </button>
+        <button type="button" id="btn-apply-picked-location" class="btn-primary">
+          Simpan Titik Ini
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- JavaScript Modules -->
+  @cannot('access-admin')
   <script src="{{ asset('js/app.js') }}"></script>
+  @endcannot
   @can('access-admin')
   <script src="{{ asset('js/admin.js') }}"></script>
+  @if(config('services.google_maps.key'))
+  <script async defer src="https://maps.googleapis.com/maps/api/js?key={{ config('services.google_maps.key') }}&callback=initLocationPickerMap&v=weekly"></script>
+  @endif
   @endcan
 </body>
 </html>

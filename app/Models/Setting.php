@@ -11,6 +11,8 @@ class Setting extends Model
         'office_lat',
         'office_lng',
         'office_radius',
+        'office_checkin_time',
+        'office_checkout_time',
         'office_ip',
         'enable_gps',
         'enable_ip'
@@ -21,6 +23,6 @@ class Setting extends Model
         'enable_ip' => 'boolean',
         'office_lat' => 'double',
         'office_lng' => 'double',
-        'office_radius' => 'integer'
+        'office_radius' => 'integer',
     ];
 }
