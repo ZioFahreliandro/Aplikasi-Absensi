@@ -3,10 +3,49 @@ const MONTHS = [
   'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
   'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
 ];
+const ADMIN_ACTIVE_TAB_KEY = 'absengo_admin_active_tab';
+
+if (typeof window.showToast !== 'function') {
+  window.showToast = function showToast(message, type = 'info') {
+    const container = document.getElementById('toast-container');
+    if (!container) return;
+
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+
+    let iconName = 'info';
+    if (type === 'success') iconName = 'check-circle';
+    if (type === 'error') iconName = 'alert-triangle';
+
+    toast.innerHTML = `
+      <div class="toast-icon">
+        <i data-lucide="${iconName}"></i>
+      </div>
+      <div class="toast-message">${message}</div>
+    `;
+
+    container.appendChild(toast);
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+
+    setTimeout(() => {
+      toast.classList.add('show');
+    }, 10);
+
+    setTimeout(() => {
+      toast.classList.remove('show');
+      setTimeout(() => {
+        toast.remove();
+      }, 300);
+    }, 4000);
+  };
+}
 
 document.addEventListener('DOMContentLoaded', () => {
   // Navigation & Sub-tab management
   setupAdminTabs();
+  restoreActiveAdminTab();
   
   // Set default month input filter to current month (YYYY-MM)
   const filterMonthInput = document.getElementById('filter-month');
@@ -34,13 +73,25 @@ document.addEventListener('DOMContentLoaded', () => {
   // Modal Photo listener
   setupPhotoModal();
   setupLocationPicker();
+
+  // Auto-load admin data when the dashboard opens for the first time.
+  const adminView = document.getElementById('view-admin');
+  if (adminView && adminView.classList.contains('active')) {
+    window.initAdminPanel();
+  }
 });
 
 // Exposed function called when admin tab navigation is clicked
 window.initAdminPanel = function() {
-  loadRecapData();
-  loadEmployeeData();
-  loadSettingsData();
+  const activeTabId = sessionStorage.getItem(ADMIN_ACTIVE_TAB_KEY) || 'tab-recap';
+
+  if (activeTabId === 'tab-employees') {
+    loadEmployeeData();
+  } else if (activeTabId === 'tab-settings') {
+    loadSettingsData();
+  } else {
+    loadRecapData();
+  }
 };
 
 // Helper to get CSRF token from HTML head
@@ -56,30 +107,50 @@ function setupAdminTabs() {
     'tab-employees': 'sub-view-employees',
     'tab-settings': 'sub-view-settings'
   };
-  
+
   Object.keys(tabs).forEach(tabId => {
     const tabBtn = document.getElementById(tabId);
     if (!tabBtn) return;
     tabBtn.addEventListener('click', () => {
-      // Remove active from all tabs & subviews
-      Object.keys(tabs).forEach(id => {
-        const tab = document.getElementById(id);
-        const view = document.getElementById(tabs[id]);
-        if (tab) tab.classList.remove('active');
-        if (view) view.classList.remove('active');
-      });
-      
-      // Add active to current
-      tabBtn.classList.add('active');
-      const activeView = document.getElementById(tabs[tabId]);
-      if (activeView) activeView.classList.add('active');
-      
-      // Fetch fresh data based on tab
-      if (tabId === 'tab-recap') loadRecapData();
-      if (tabId === 'tab-employees') loadEmployeeData();
-      if (tabId === 'tab-settings') loadSettingsData();
+      activateAdminTab(tabId, tabs);
     });
   });
+}
+
+function activateAdminTab(tabId, tabs = null) {
+  const tabMap = tabs || {
+    'tab-recap': 'sub-view-recap',
+    'tab-employees': 'sub-view-employees',
+    'tab-settings': 'sub-view-settings'
+  };
+
+  Object.keys(tabMap).forEach(id => {
+    const tab = document.getElementById(id);
+    const view = document.getElementById(tabMap[id]);
+    if (tab) tab.classList.remove('active');
+    if (view) view.classList.remove('active');
+  });
+
+  const activeTab = document.getElementById(tabId);
+  const activeView = document.getElementById(tabMap[tabId]);
+  if (activeTab) activeTab.classList.add('active');
+  if (activeView) activeView.classList.add('active');
+
+  sessionStorage.setItem(ADMIN_ACTIVE_TAB_KEY, tabId);
+
+  if (tabId === 'tab-recap') loadRecapData();
+  if (tabId === 'tab-employees') loadEmployeeData();
+  if (tabId === 'tab-settings') loadSettingsData();
+}
+
+function restoreActiveAdminTab() {
+  const tabId = sessionStorage.getItem(ADMIN_ACTIVE_TAB_KEY);
+  if (!tabId) return;
+
+  const tabBtn = document.getElementById(tabId);
+  if (!tabBtn) return;
+
+  tabBtn.click();
 }
 
 // ----------------------------------------------------
@@ -94,7 +165,8 @@ async function loadRecapData() {
   tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted">Memuat data absensi...</td></tr>`;
   
   try {
-    const res = await fetch(`/api/attendance?month=${encodeURIComponent(monthFilter)}`, {
+    const res = await fetch(`/api/attendance?month=${encodeURIComponent(monthFilter)}&t=${Date.now()}`, {
+      cache: 'no-store',
       credentials: 'same-origin',
       headers: {
         'Accept': 'application/json',
@@ -172,7 +244,12 @@ async function loadRecapData() {
 async function updateStats(logs) {
   // 1. Total active employees
   try {
-    const res = await fetch('/api/employees');
+    const res = await fetch(`/api/employees?t=${Date.now()}`, {
+      cache: 'no-store',
+      headers: {
+        'Accept': 'application/json',
+      },
+    });
     const employees = await res.json();
     document.getElementById('stat-total-emp').textContent = employees.length;
   } catch (e) {
@@ -193,7 +270,12 @@ async function updateStats(logs) {
   // 3. Outside radius logs count today
   let officeRadius = 100;
   try {
-    const res = await fetch('/api/settings');
+    const res = await fetch(`/api/settings?t=${Date.now()}`, {
+      cache: 'no-store',
+      headers: {
+        'Accept': 'application/json',
+      },
+    });
     const settings = await res.json();
     officeRadius = settings.office_radius || 100;
   } catch (e) {}
@@ -293,7 +375,8 @@ async function deleteTodayAttendance() {
   if (!confirmed) return;
 
   try {
-    const res = await fetch('/api/attendance/today', {
+    const res = await fetch(`/api/attendance/today?t=${Date.now()}`, {
+      cache: 'no-store',
       method: 'DELETE',
       headers: {
         'X-CSRF-TOKEN': getCsrfToken()
@@ -339,7 +422,12 @@ async function loadEmployeeData() {
   tbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted">Memuat karyawan...</td></tr>`;
   
   try {
-    const res = await fetch('/api/employees');
+    const res = await fetch(`/api/employees?t=${Date.now()}`, {
+      cache: 'no-store',
+      headers: {
+        'Accept': 'application/json',
+      },
+    });
     const employees = await res.json();
     
     if (employees.length === 0) {
@@ -349,33 +437,56 @@ async function loadEmployeeData() {
     
     tbody.innerHTML = '';
     employees.forEach(emp => {
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td><code>${emp.nip || '-'}</code></td>
-        <td><strong>${emp.name}</strong></td>
-        <td><code>******</code></td>
-        <td>
-          <button class="btn-primary btn-edit" data-id="${emp.id}">Edit</button>
-          <button class="btn-danger" data-id="${emp.id}">Hapus</button>
-        </td>
-      `;
-      
-      // Bind Edit Action
-      tr.querySelector('.btn-edit').addEventListener('click', () => {
-        editEmployee(emp);
-      });
-      
-      // Bind Delete Action
-      tr.querySelector('.btn-danger').addEventListener('click', () => {
-        deleteEmployee(emp.id, emp.name);
-      });
-      
-      tbody.appendChild(tr);
+      tbody.appendChild(createEmployeeRow(emp));
     });
   } catch (error) {
     console.error("Gagal memuat karyawan:", error);
     tbody.innerHTML = `<tr><td colspan="4" class="text-center text-danger">Gagal memuat karyawan dari server.</td></tr>`;
   }
+}
+
+function createEmployeeRow(emp) {
+  const tr = document.createElement('tr');
+  tr.dataset.employeeId = emp.id;
+  tr.innerHTML = `
+    <td><code>${emp.nip || '-'}</code></td>
+    <td><code>${emp.phone || '-'}</code></td>
+    <td><strong>${emp.name}</strong></td>
+    <td>
+      <button class="btn-primary btn-edit" data-id="${emp.id}">Edit</button>
+      <button class="btn-danger" data-id="${emp.id}">Hapus</button>
+    </td>
+  `;
+
+  tr.querySelector('.btn-edit').addEventListener('click', () => {
+    editEmployee(emp);
+  });
+
+  tr.querySelector('.btn-danger').addEventListener('click', () => {
+    deleteEmployee(emp.id, emp.name);
+  });
+
+  return tr;
+}
+
+function upsertEmployeeRow(emp) {
+  const tbody = document.getElementById('employee-table-body');
+  if (!tbody) return;
+
+  const existingRow = tbody.querySelector(`tr[data-employee-id="${emp.id}"]`);
+  const newRow = createEmployeeRow(emp);
+
+  const placeholderRow = tbody.querySelector('tr td[colspan]');
+  if (placeholderRow) {
+    tbody.innerHTML = '';
+  }
+
+  if (existingRow) {
+    existingRow.replaceWith(newRow);
+    return;
+  }
+
+  tbody.prepend(newRow);
 }
 
 // Save Employee Form Handler (Create or Update)
@@ -385,14 +496,16 @@ async function saveEmployee(e) {
   const id = document.getElementById('employee-id').value;
   const name = document.getElementById('emp-name').value.trim();
   const nip = document.getElementById('emp-nip').value.trim();
+  const phone = document.getElementById('emp-phone').value.trim();
   const password = document.getElementById('emp-password').value;
+  const isEditing = Boolean(id);
   
-  if (!name || !nip || !password) {
+  if (!name || !nip || !phone || (!isEditing && !password)) {
     window.showToast("Semua data input karyawan wajib diisi!", "error");
     return;
   }
   
-  if (password.length < 6) {
+  if (!isEditing && password.length < 6) {
     window.showToast("Password minimal terdiri dari 6 karakter!", "error");
     return;
   }
@@ -407,13 +520,16 @@ async function saveEmployee(e) {
         'Content-Type': 'application/json',
         'X-CSRF-TOKEN': getCsrfToken()
       },
-      body: JSON.stringify({ name, nip, password })
+      body: JSON.stringify({ name, nip, phone, password: isEditing ? undefined : password })
     });
     
     if (res.ok) {
+      const savedEmployee = await res.json();
       window.showToast(`Karyawan berhasil ${id ? 'diperbarui' : 'ditambahkan'}!`, "success");
+      upsertEmployeeRow(savedEmployee);
       resetEmployeeForm();
-      loadEmployeeData();
+      sessionStorage.setItem(ADMIN_ACTIVE_TAB_KEY, 'tab-employees');
+      window.location.reload();
       
       // Sync Kiosk employee dropdown
       if (window.fetchEmployees) window.fetchEmployees();
@@ -431,7 +547,12 @@ function editEmployee(emp) {
   document.getElementById('employee-id').value = emp.id;
   document.getElementById('emp-name').value = emp.name;
   document.getElementById('emp-nip').value = emp.nip;
-  document.getElementById('emp-password').value = '';
+  document.getElementById('emp-phone').value = emp.phone || '';
+  const passwordInput = document.getElementById('emp-password');
+  passwordInput.value = '';
+  passwordInput.required = false;
+  passwordInput.disabled = true;
+  document.getElementById('employee-password-group').style.display = 'none';
   
   document.getElementById('employee-form-title').textContent = "Edit Data Karyawan";
   document.getElementById('btn-submit-employee').innerHTML = `<i data-lucide="save"></i> Perbarui Karyawan`;
@@ -443,7 +564,12 @@ function resetEmployeeForm() {
   document.getElementById('employee-id').value = '';
   document.getElementById('emp-name').value = '';
   document.getElementById('emp-nip').value = '';
-  document.getElementById('emp-password').value = '';
+  document.getElementById('emp-phone').value = '';
+  const passwordInput = document.getElementById('emp-password');
+  passwordInput.value = '';
+  passwordInput.required = true;
+  passwordInput.disabled = false;
+  document.getElementById('employee-password-group').style.display = 'block';
   
   document.getElementById('employee-form-title').textContent = "Tambah Karyawan Baru";
   document.getElementById('btn-submit-employee').innerHTML = `<i data-lucide="plus-circle"></i> Simpan Karyawan`;
@@ -465,7 +591,8 @@ async function deleteEmployee(id, name) {
     });
     if (res.ok) {
       window.showToast(`Karyawan "${name}" berhasil dihapus`, "success");
-      loadEmployeeData();
+      sessionStorage.setItem(ADMIN_ACTIVE_TAB_KEY, 'tab-employees');
+      window.location.reload();
       
       // Sync Kiosk employee dropdown
       if (window.fetchEmployees) window.fetchEmployees();
@@ -569,7 +696,12 @@ window.initLocationPickerMap = function initLocationPickerMap() {
 
 async function loadSettingsData() {
   try {
-    const res = await fetch('/api/settings');
+    const res = await fetch(`/api/settings?t=${Date.now()}`, {
+      cache: 'no-store',
+      headers: {
+        'Accept': 'application/json',
+      },
+    });
     const settings = await res.json();
 
     // Set fields (Laravel returns snake_case columns)
@@ -630,8 +762,22 @@ async function saveSettings(e) {
 
     if (res.ok) {
       window.showToast('Semua pengaturan berhasil disimpan!', 'success');
+      document.getElementById('set-office-name').value = officeName;
+      document.getElementById('set-enable-gps').checked = enableGps;
+      document.getElementById('set-office-lat').value = Number(officeLat).toFixed(6);
+      document.getElementById('set-office-lng').value = Number(officeLng).toFixed(6);
+      document.getElementById('set-office-radius').value = officeRadius;
+      document.getElementById('set-office-checkin-time').value = officeCheckinTime.slice(0, 5);
+      document.getElementById('set-office-checkout-time').value = officeCheckoutTime.slice(0, 5);
+
+      const scheduleEl = document.getElementById('info-work-schedule');
+      if (scheduleEl) {
+        scheduleEl.textContent = `${officeCheckinTime.slice(0, 5)} - ${officeCheckoutTime.slice(0, 5)}`;
+      }
+
       if (window.fetchSettings) window.fetchSettings();
-      loadSettingsData();
+      sessionStorage.setItem(ADMIN_ACTIVE_TAB_KEY, 'tab-settings');
+      window.location.reload();
     } else {
       window.showToast('Gagal menyimpan pengaturan', 'error');
     }
@@ -815,4 +961,3 @@ function applyPickedLocation() {
   closeLocationPicker();
   window.showToast('Koordinat kantor sudah diisi dari peta.', 'success');
 }
-

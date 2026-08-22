@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Employee extends Model
 {
-    protected $fillable = ['name', 'nip', 'password'];
+    protected $fillable = ['name', 'nip', 'phone', 'password'];
 
     protected $hidden = ['password'];
 

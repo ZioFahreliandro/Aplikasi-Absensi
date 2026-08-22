@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Employee;
 use App\Models\Attendance;
 use App\Models\Setting;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 
@@ -23,17 +24,32 @@ class AdminController extends Controller
      */
     public function storeEmployee(Request $request)
     {
+        $request->merge([
+            'phone' => $this->normalizePhone($request->input('phone')),
+        ]);
+
         $request->validate([
             'name' => 'required|string|max:255',
             'nip' => 'required|string|unique:employees,nip',
+            'phone' => 'required|string|max:20|unique:employees,phone',
             'password' => 'required|string|min:6'
         ]);
 
         $employee = Employee::create([
             'name' => $request->name,
             'nip' => $request->nip,
+            'phone' => $request->phone,
             'password' => Hash::make($request->password)
         ]);
+
+        User::updateOrCreate(
+            ['email' => $employee->nip . '@local'],
+            [
+                'name' => $employee->name,
+                'password' => $request->password,
+                'role' => 'employee',
+            ]
+        );
 
         return response()->json($employee, 201);
     }
@@ -48,17 +64,44 @@ class AdminController extends Controller
             return response()->json(['error' => 'Karyawan tidak ditemukan'], 404);
         }
 
+        $request->merge([
+            'phone' => $this->normalizePhone($request->input('phone')),
+        ]);
+
         $request->validate([
             'name' => 'required|string|max:255',
             'nip' => 'required|string|unique:employees,nip,' . $id,
-            'password' => 'required|string|min:6'
+            'phone' => 'required|string|max:20|unique:employees,phone,' . $id,
+            'password' => 'nullable|string|min:6'
         ]);
 
-        $employee->update([
+        $oldEmail = $employee->nip . '@local';
+        $employeeData = [
             'name' => $request->name,
             'nip' => $request->nip,
-            'password' => Hash::make($request->password)
-        ]);
+            'phone' => $request->phone,
+        ];
+
+        if ($request->filled('password')) {
+            $employeeData['password'] = Hash::make($request->password);
+        }
+
+        $employee->update($employeeData);
+
+        $userData = [
+            'email' => $employee->nip . '@local',
+            'name' => $employee->name,
+            'role' => 'employee',
+        ];
+
+        if ($request->filled('password')) {
+            $userData['password'] = $request->password;
+        }
+
+        User::updateOrCreate(
+            ['email' => $oldEmail],
+            $userData
+        );
 
         return response()->json($employee);
     }
@@ -172,5 +215,10 @@ class AdminController extends Controller
         $deleted = Attendance::where('date', $today)->delete();
 
         return response()->json(['message' => 'Rekapan absensi hari ini berhasil dihapus', 'deleted' => $deleted]);
+    }
+
+    private function normalizePhone(?string $phone): string
+    {
+        return preg_replace('/\D+/', '', (string) $phone) ?? '';
     }
 }

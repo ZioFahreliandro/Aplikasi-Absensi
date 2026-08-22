@@ -7,9 +7,15 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/', [AuthController::class, 'showLoginForm'])->name('login');
 Route::post('/login', [AuthController::class, 'login'])->name('login.post');
+Route::get('/forgot-password', [AuthController::class, 'showForgotPasswordForm'])->name('password.request');
+Route::post('/forgot-password/code', [AuthController::class, 'sendForgotPasswordCode'])->name('password.send-code');
+Route::post('/forgot-password/verify', [AuthController::class, 'verifyForgotPasswordCode'])->name('password.verify-code');
+Route::post('/forgot-password', [AuthController::class, 'resetForgotPassword'])->name('password.update-by-phone');
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
 Route::middleware('auth')->group(function () {
+    Route::post('/profile/password', [AuthController::class, 'updatePassword'])->name('profile.password.update');
+
     Route::get('/attendance', function () {
         return view('index');
     })->name('attendance');
