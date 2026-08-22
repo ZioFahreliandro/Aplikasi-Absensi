@@ -20,13 +20,168 @@
   <!-- Top Navigation Bar -->
   <header class="app-header">
     <div class="header-logo">
-      <div class="logo-icon">
-        <i data-lucide="shield-check"></i>
-      </div>
-      <div class="logo-text">
-        <h1>Absen<span>Go</span></h1>
-        <p>Sistem Absensi Berbasis Website</p>
-      </div>
+      @php
+        $currentUser = Auth::user();
+        $employeeName = $currentUser?->name ?? 'Karyawan';
+        $employeeNip = null;
+        $isAdmin = $currentUser && (($currentUser->role ?? null) === 'admin');
+        $isEmployee = $currentUser && !$isAdmin;
+
+        if ($currentUser && !empty($currentUser->email) && str_contains($currentUser->email, '@local')) {
+          $employeeNip = explode('@', $currentUser->email, 2)[0];
+        }
+
+        $employeeInitial = strtoupper(mb_substr(trim($employeeName), 0, 1));
+      @endphp
+
+      @if ($isEmployee)
+      <details class="employee-header-profile" @if(session('status') || $errors->any()) open @endif>
+        <summary class="employee-header-summary">
+          <div class="profile-avatar profile-avatar-sm">{{ $employeeInitial }}</div>
+          <div class="employee-header-summary-copy">
+            <span class="profile-kicker">Karyawan</span>
+            <h2>{{ $employeeName }}</h2>
+            <p>{{ $employeeNip ?? '-' }}</p>
+          </div>
+          <span class="employee-header-chevron" aria-hidden="true">
+            <i data-lucide="chevron-down"></i>
+          </span>
+        </summary>
+
+        <div class="employee-header-panel">
+          @if (session('status'))
+            <div class="profile-alert success">
+              {{ session('status') }}
+            </div>
+          @endif
+
+          @if ($errors->any())
+            <div class="profile-alert error">
+              {{ $errors->first() }}
+            </div>
+          @endif
+
+          <div class="profile-meta profile-meta-compact">
+            <div>
+              <span>NIP</span>
+              <strong>{{ $employeeNip ?? '-' }}</strong>
+            </div>
+            <div>
+              <span>Status</span>
+              <strong>Karyawan Aktif</strong>
+            </div>
+          </div>
+
+          <form action="{{ route('profile.password.update') }}" method="POST" class="profile-password-form profile-password-form-compact">
+            @csrf
+            <div class="form-group">
+              <label for="current_password">Password Lama</label>
+              <div class="password-field">
+                <input type="password" id="current_password" name="current_password" class="input-field" placeholder="Password lama" autocomplete="current-password" required>
+                <button type="button" class="password-toggle" data-password-toggle aria-label="Tampilkan password" aria-pressed="false">
+                  <i data-lucide="eye"></i>
+                </button>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="password">Password Baru</label>
+              <div class="password-field">
+                <input type="password" id="password" name="password" class="input-field" placeholder="Password baru" minlength="6" autocomplete="new-password" required>
+                <button type="button" class="password-toggle" data-password-toggle aria-label="Tampilkan password" aria-pressed="false">
+                  <i data-lucide="eye"></i>
+                </button>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="password_confirmation">Konfirmasi Password Baru</label>
+              <div class="password-field">
+                <input type="password" id="password_confirmation" name="password_confirmation" class="input-field" placeholder="Ulangi password baru" minlength="6" autocomplete="new-password" required>
+                <button type="button" class="password-toggle" data-password-toggle aria-label="Tampilkan password" aria-pressed="false">
+                  <i data-lucide="eye"></i>
+                </button>
+              </div>
+            </div>
+
+            <button type="submit" class="btn-primary profile-submit-btn">
+              <i data-lucide="key-round"></i> Simpan Password
+            </button>
+          </form>
+        </div>
+      </details>
+      @else
+      <details class="employee-header-profile" @if(session('status') || $errors->any()) open @endif>
+        <summary class="employee-header-summary">
+          <div class="profile-avatar profile-avatar-sm">{{ $employeeInitial }}</div>
+          <div class="employee-header-summary-copy">
+            <h2>{{ $employeeName }}</h2>
+            <p>Admin Aktif</p>
+          </div>
+          <span class="employee-header-chevron" aria-hidden="true">
+            <i data-lucide="chevron-down"></i>
+          </span>
+        </summary>
+
+        <div class="employee-header-panel">
+          @if (session('status'))
+            <div class="profile-alert success">
+              {{ session('status') }}
+            </div>
+          @endif
+
+          @if ($errors->any())
+            <div class="profile-alert error">
+              {{ $errors->first() }}
+            </div>
+          @endif
+
+          <div class="profile-meta profile-meta-compact">
+            <div>
+              <span>Status</span>
+              <strong>Admin Aktif</strong>
+            </div>
+          </div>
+
+          <form action="{{ route('profile.password.update') }}" method="POST" class="profile-password-form profile-password-form-compact">
+            @csrf
+            <div class="form-group">
+              <label for="current_password">Password Lama</label>
+              <div class="password-field">
+                <input type="password" id="current_password" name="current_password" class="input-field" placeholder="Password lama" autocomplete="current-password" required>
+                <button type="button" class="password-toggle" data-password-toggle aria-label="Tampilkan password" aria-pressed="false">
+                  <i data-lucide="eye"></i>
+                </button>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="password">Password Baru</label>
+              <div class="password-field">
+                <input type="password" id="password" name="password" class="input-field" placeholder="Password baru" minlength="6" autocomplete="new-password" required>
+                <button type="button" class="password-toggle" data-password-toggle aria-label="Tampilkan password" aria-pressed="false">
+                  <i data-lucide="eye"></i>
+                </button>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="password_confirmation">Konfirmasi Password Baru</label>
+              <div class="password-field">
+                <input type="password" id="password_confirmation" name="password_confirmation" class="input-field" placeholder="Ulangi password baru" minlength="6" autocomplete="new-password" required>
+                <button type="button" class="password-toggle" data-password-toggle aria-label="Tampilkan password" aria-pressed="false">
+                  <i data-lucide="eye"></i>
+                </button>
+              </div>
+            </div>
+
+            <button type="submit" class="btn-primary profile-submit-btn">
+              <i data-lucide="key-round"></i> Simpan Password
+            </button>
+          </form>
+        </div>
+      </details>
+      @endif
     </div>
     <nav class="header-nav">
       @cannot('access-admin')
@@ -59,6 +214,9 @@
         <div class="kiosk-left">
           <!-- Premium Clock Card -->
           <div class="card clock-card">
+            <div class="clock-greeting">
+              Selamat datang {{ $employeeName }}
+            </div>
             <div class="clock-icon">
               <i data-lucide="clock"></i>
             </div>
@@ -252,8 +410,22 @@
                   </div>
 
                   <div class="form-group">
+                    <label for="emp-phone">No Telepon</label>
+                    <input type="tel" id="emp-phone" class="input-field" placeholder="Contoh: 081234567890" required>
+                    <p class="field-hint">Gunakan angka saja tanpa spasi atau tanda baca.</p>
+                  </div>
+
+                  <div class="form-group">
                     <label for="emp-password">Password Login</label>
-                    <input type="password" id="emp-password" class="input-field" placeholder="Minimal 6 karakter" minlength="6" required autocomplete="new-password">
+                    <div id="employee-password-group">
+                      <div class="password-field">
+                        <input type="password" id="emp-password" class="input-field" placeholder="Minimal 6 karakter" minlength="6" required autocomplete="new-password">
+                        <button type="button" class="password-toggle" data-password-toggle aria-label="Tampilkan password" aria-pressed="false">
+                          <i data-lucide="eye"></i>
+                        </button>
+                      </div>
+                      <p class="field-hint" id="employee-password-hint">Password hanya diisi saat membuat karyawan baru. Saat edit, password tidak ditampilkan.</p>
+                    </div>
                   </div>
 
                   <div class="form-actions">
@@ -275,8 +447,8 @@
                     <thead>
                       <tr>
                         <th>NIP</th>
+                        <th>No Telepon</th>
                         <th>Nama</th>
-                        <th>Password</th>
                         <th>Aksi</th>
                       </tr>
                     </thead>
@@ -492,10 +664,12 @@
 
   <!-- JavaScript Modules -->
   @cannot('access-admin')
+  <script src="{{ asset('js/password-toggle.js') }}?v={{ filemtime(public_path('js/password-toggle.js')) }}"></script>
   <script src="{{ asset('js/app.js') }}"></script>
   @endcannot
   @can('access-admin')
-  <script src="{{ asset('js/admin.js') }}"></script>
+  <script src="{{ asset('js/password-toggle.js') }}?v={{ filemtime(public_path('js/password-toggle.js')) }}"></script>
+  <script src="{{ asset('js/admin.js') }}?v={{ filemtime(public_path('js/admin.js')) }}"></script>
   @if(config('services.google_maps.key'))
   <script async defer src="https://maps.googleapis.com/maps/api/js?key={{ config('services.google_maps.key') }}&callback=initLocationPickerMap&v=weekly"></script>
   @endif
