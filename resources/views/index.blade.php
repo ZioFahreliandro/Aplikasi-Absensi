@@ -243,6 +243,11 @@
               </div>
               <p id="location-status" class="camera-tip">Lokasi belum aktif. Silakan nyalakan GPS dan beri izin akses lokasi dulu.</p>
               <p id="attendance-selection-help" class="camera-tip" style="margin-top: 10px;">Pilih Masuk atau Pulang dulu, lalu lanjut ambil foto.</p>
+              <div id="late-reason-group" class="form-group late-reason-group" hidden>
+                <label for="late-reason">Alasan Telat</label>
+                <textarea id="late-reason" class="input-field late-reason-input" rows="3" placeholder="Jelaskan alasan keterlambatan"></textarea>
+                <p class="field-hint">Opsional saat terlambat, kalau mau bisa diisi untuk catatan.</p>
+              </div>
             </form>
           </div>
         </div>
@@ -256,20 +261,21 @@
             </div>
 
             <div class="camera-frame-container">
+              <div class="camera-action-group">
+                <button id="btn-init-camera" class="btn-primary-small" type="button">
+                  <i data-lucide="video"></i> Aktifkan Kamera
+                </button>
+                <button id="btn-toggle-camera" class="btn-secondary-small" type="button" hidden>
+                  <i data-lucide="power"></i> Matikan Kamera
+                </button>
+              </div>
+
               <div class="camera-circle-wrapper">
                 <video id="webcam" autoplay playsinline muted></video>
                 <canvas id="photo-canvas" style="display: none;"></canvas>
                 <div id="camera-placeholder" class="camera-placeholder">
                   <i data-lucide="camera-off" class="placeholder-icon"></i>
                   <p>Kamera Belum Aktif</p>
-                  <div class="attendance-actions" style="margin-top: 8px; justify-content: center; gap: 0.75rem;">
-                    <button id="btn-init-camera" class="btn-primary-small">
-                      <i data-lucide="video"></i> Aktifkan Kamera
-                    </button>
-                    <button id="btn-toggle-camera" class="btn-secondary-small" type="button">
-                      <i data-lucide="power"></i> Matikan Kamera
-                    </button>
-                  </div>
                 </div>
               </div>
               <div class="attendance-actions" style="margin-top: 12px; justify-content: center;">
@@ -319,7 +325,7 @@
                   <input type="month" id="filter-month" class="input-field">
                 </div>
                 <button id="btn-export-csv" class="btn-success">
-                  <i data-lucide="download"></i> Ekspor CSV
+                  <i data-lucide="download"></i> Ekspor Excel
                 </button>
                 <button id="btn-delete-today" class="btn-danger">
                   <i data-lucide="trash-2"></i> Hapus Rekap Hari Ini
@@ -369,13 +375,14 @@
                       <th>Waktu</th>
                       <th>Tipe</th>
                       <th>Keterangan</th>
+                      <th>Alasan</th>
                       <th>Selfie</th>
                     </tr>
                   </thead>
                   <tbody id="recap-table-body">
                     <!-- Dynamic rows here -->
                     <tr>
-                      <td colspan="6" class="text-center text-muted">Memuat data absensi...</td>
+                      <td colspan="7" class="text-center text-muted">Memuat data absensi...</td>
                     </tr>
                   </tbody>
                 </table>
@@ -612,12 +619,8 @@
   <div id="modal-photo" class="modal">
     <div class="modal-content">
       <span class="modal-close">&times;</span>
-      <h3>Foto Selfie Absensi</h3>
       <div class="modal-body-img">
         <img id="modal-expanded-img" src="" alt="Selfie Absensi">
-      </div>
-      <div id="modal-photo-details" class="modal-details-text">
-        <!-- Details populate here -->
       </div>
     </div>
   </div>

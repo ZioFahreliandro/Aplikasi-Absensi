@@ -26,6 +26,8 @@ const canvasPhoto = document.getElementById('photo-canvas');
 const cameraPlaceholder = document.getElementById('camera-placeholder');
 const btnInitCamera = document.getElementById('btn-init-camera');
 const btnToggleCamera = document.getElementById('btn-toggle-camera');
+const lateReasonGroup = document.getElementById('late-reason-group');
+const lateReasonInput = document.getElementById('late-reason');
 const cameraStatusBadge = document.getElementById('camera-status-badge');
 const cameraWrapper = document.querySelector('.camera-circle-wrapper');
 
@@ -35,6 +37,46 @@ const MONTHS = [
   'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
   'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
 ];
+
+function getCurrentTimeString() {
+  const now = new Date();
+  const hh = String(now.getHours()).padStart(2, '0');
+  const mm = String(now.getMinutes()).padStart(2, '0');
+  const ss = String(now.getSeconds()).padStart(2, '0');
+  return `${hh}:${mm}:${ss}`;
+}
+
+function normalizeTimeString(time) {
+  const value = String(time || '').trim();
+  if (!value) return '00:00:00';
+  if (/^\d{2}:\d{2}$/.test(value)) return `${value}:00`;
+  return value;
+}
+
+function isLateForCheckin() {
+  if (pendingAttendanceType !== 'masuk') return false;
+  if (!officeSettings || !officeSettings.office_checkin_time) return false;
+
+  return getCurrentTimeString() > normalizeTimeString(officeSettings.office_checkin_time);
+}
+
+function updateLateReasonVisibility() {
+  if (!lateReasonGroup || !lateReasonInput) return;
+
+  const shouldShow = isLateForCheckin();
+  lateReasonGroup.hidden = !shouldShow;
+
+  if (!shouldShow) {
+    lateReasonInput.value = '';
+    if (pendingAttendanceType === 'masuk' && attendanceSelectionHelp) {
+      attendanceSelectionHelp.textContent = 'Pilih Masuk atau Pulang dulu, lalu lanjut ambil foto.';
+    }
+  } else if (attendanceSelectionHelp) {
+    attendanceSelectionHelp.textContent = 'Kamu terlambat masuk. Alasan di bawah ini opsional.';
+  }
+
+  refreshAttendanceButtonState();
+}
 
 // Initialize App
 document.addEventListener('DOMContentLoaded', () => {
@@ -58,6 +100,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Setup Attendance actions
   if (btnClockIn) btnClockIn.addEventListener('click', () => selectAttendanceType('masuk'));
   if (btnClockOut) btnClockOut.addEventListener('click', () => selectAttendanceType('pulang'));
+  if (lateReasonInput) lateReasonInput.addEventListener('input', refreshAttendanceButtonState);
   if (btnSubmitAttendance) btnSubmitAttendance.addEventListener('click', () => submitAttendance());
 });
 
@@ -114,6 +157,7 @@ function initClock() {
     const year = now.getFullYear();
 
     liveDate.textContent = `${dayName}, ${date} ${monthName} ${year}`;
+    updateLateReasonVisibility();
   }
 
   updateTime();
@@ -125,6 +169,7 @@ async function fetchSettings() {
     const res = await fetch('/api/settings');
     if (!res.ok) return;
     officeSettings = await res.json();
+    updateLateReasonVisibility();
   } catch (error) {
     console.error("Gagal mengambil pengaturan kantor:", error);
   }
@@ -221,6 +266,12 @@ async function initCamera() {
       cameraStatusBadge.className = "badge-status online";
     }
     if (cameraWrapper) cameraWrapper.classList.add('active');
+    if (btnInitCamera) btnInitCamera.hidden = true;
+    if (btnToggleCamera) {
+      btnToggleCamera.hidden = false;
+      btnToggleCamera.innerHTML = '<i data-lucide="power"></i> Matikan Kamera';
+    }
+    lucide.createIcons();
 
   } catch (error) {
     console.error("Gagal membuka kamera:", error);
@@ -238,13 +289,6 @@ async function initCamera() {
 function toggleCamera() {
   if (currentStream) {
     stopCamera();
-    if (btnInitCamera) {
-      btnInitCamera.innerHTML = '<i data-lucide="video"></i> Aktifkan Kamera';
-    }
-    if (btnToggleCamera) {
-      btnToggleCamera.innerHTML = '<i data-lucide="power"></i> Aktifkan Kamera';
-    }
-    lucide.createIcons();
     return;
   }
 
@@ -264,6 +308,14 @@ function stopCamera() {
     cameraStatusBadge.className = "badge-status offline";
   }
   if (cameraWrapper) cameraWrapper.classList.remove('active', 'ready');
+  if (btnInitCamera) {
+    btnInitCamera.hidden = false;
+    btnInitCamera.innerHTML = '<i data-lucide="video"></i> Aktifkan Kamera';
+  }
+  if (btnToggleCamera) {
+    btnToggleCamera.hidden = true;
+    btnToggleCamera.innerHTML = '<i data-lucide="power"></i> Matikan Kamera';
+  }
 }
 
 function selectAttendanceType(type) {
@@ -287,6 +339,9 @@ function selectAttendanceType(type) {
     attendanceSelectionHelp.textContent = `Aksi terpilih: ${type === 'masuk' ? 'Masuk' : 'Pulang'}. Tekan tombol foto untuk melanjutkan.`;
   }
 
+  updateLateReasonVisibility();
+  refreshAttendanceButtonState();
+
   showToast(`Aksi ${type === 'masuk' ? 'Masuk' : 'Pulang'} dipilih. Silakan ambil foto untuk mengirim absensi.`, 'info');
 }
 
@@ -294,6 +349,8 @@ function resetAttendanceSelection() {
   pendingAttendanceType = null;
   if (btnClockIn) btnClockIn.classList.remove('active');
   if (btnClockOut) btnClockOut.classList.remove('active');
+  if (lateReasonInput) lateReasonInput.value = '';
+  if (lateReasonGroup) lateReasonGroup.hidden = true;
 
   if (btnSubmitAttendance) {
     btnSubmitAttendance.disabled = true;
@@ -375,6 +432,10 @@ async function submitAttendance(type = pendingAttendanceType) {
     }
   }
 
+  const lateReason = lateReasonGroup && !lateReasonGroup.hidden
+    ? (lateReasonInput?.value || '').trim()
+    : '';
+
   // Capture image
   const selfieBase64 = captureSelfie();
   if (!selfieBase64) {
@@ -391,7 +452,8 @@ async function submitAttendance(type = pendingAttendanceType) {
       type,
       selfie: selfieBase64,
       latitude: currentCoords.lat,
-      longitude: currentCoords.lng
+      longitude: currentCoords.lng,
+      late_reason: lateReason
     };
 
     // Fetch Laravel CSRF Token from Meta Tag
