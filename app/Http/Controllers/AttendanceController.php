@@ -32,6 +32,7 @@ class AttendanceController extends Controller
         $selfie = $request->input('selfie');
         $latitude = $request->input('latitude');
         $longitude = $request->input('longitude');
+        $lateReason = trim((string) $request->input('late_reason', ''));
 
         if (!$type || !$selfie) {
             return response()->json([
@@ -65,6 +66,12 @@ class AttendanceController extends Controller
             }
         }
 
+        // Samakan waktu rekap dengan jam/tanggal yang tampil di kiosk (WIB).
+        $now = Carbon::now('Asia/Jakarta');
+        $dateStr = $now->toDateString(); // YYYY-MM-DD
+        $timeStr = $now->toTimeString(); // HH:MM:SS
+        $attendanceNote = $this->resolveAttendanceNote($type, $settings ?? null, $timeStr);
+
         $clientIp = $this->getNormalizedIp($request);
         $employee = $this->resolveEmployeeFromUser($user);
 
@@ -92,12 +99,6 @@ class AttendanceController extends Controller
             return response()->json(['error' => 'Gagal memproses gambar selfie di server: ' . $e->getMessage()], 500);
         }
 
-        // Samakan waktu rekap dengan jam/tanggal yang tampil di kiosk (WIB).
-        $now = Carbon::now('Asia/Jakarta');
-        $dateStr = $now->toDateString(); // YYYY-MM-DD
-        $timeStr = $now->toTimeString(); // HH:MM:SS
-        $attendanceNote = $this->resolveAttendanceNote($type, $settings ?? null, $timeStr);
-
         $record = Attendance::create([
             'employee_id' => $employee?->id,
             'employee_name' => $employee?->name ?? $user?->name ?? 'Kiosk',
@@ -110,7 +111,8 @@ class AttendanceController extends Controller
             'distance' => $distance !== null ? round($distance) : null,
             'ip_address' => $clientIp,
             'status' => 'Success',
-            'attendance_note' => $attendanceNote
+            'attendance_note' => $attendanceNote,
+            'late_reason' => $attendanceNote === 'Telat Masuk' ? $lateReason : null
         ]);
 
         return response()->json([

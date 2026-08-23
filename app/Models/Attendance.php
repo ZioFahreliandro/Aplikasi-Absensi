@@ -19,7 +19,8 @@ class Attendance extends Model
         'distance',
         'ip_address',
         'status',
-        'attendance_note'
+        'attendance_note',
+        'late_reason'
     ];
 
     /**

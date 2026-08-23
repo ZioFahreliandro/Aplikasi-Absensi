@@ -158,6 +158,27 @@ function restoreActiveAdminTab() {
 // ----------------------------------------------------
 let currentAttendanceLogs = [];
 
+function escapeHtml(value) {
+  const text = value === null || value === undefined ? '' : String(value);
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function getAttendanceSummary(log) {
+  const note = log.attendance_note || 'Tepat Waktu';
+  const reason = (log.late_reason || '').trim();
+
+  if (reason && note !== 'Tepat Waktu') {
+    return `${note} - ${reason}`;
+  }
+
+  return note;
+}
+
 async function loadRecapData() {
   const monthFilter = document.getElementById('filter-month').value;
   const tbody = document.getElementById('recap-table-body');
@@ -195,7 +216,7 @@ async function loadRecapData() {
     updateStats(currentAttendanceLogs);
     
     if (currentAttendanceLogs.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted">Tidak ada rekaman absensi pada bulan ini.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted">Tidak ada rekaman absensi pada bulan ini.</td></tr>`;
       return;
     }
     
@@ -212,16 +233,18 @@ async function loadRecapData() {
       const note = log.attendance_note || 'Tepat Waktu';
       const noteBadge = note === 'Tepat Waktu'
         ? `<span class="indicator-badge success" style="padding:0.2rem 0.5rem">Tepat Waktu</span>`
-        : `<span class="indicator-badge warning" style="padding:0.2rem 0.5rem">${note}</span>`;
+        : `<span class="indicator-badge warning" style="padding:0.2rem 0.5rem">${escapeHtml(note)}</span>`;
+      const lateReason = (log.late_reason || '').trim();
       
       tr.innerHTML = `
-        <td><strong>${log.employee_name}</strong></td>
-        <td>${formatIndoDate(log.date)}</td>
-        <td><code style="font-size:0.95rem; font-weight:600">${log.time}</code></td>
+        <td><strong>${escapeHtml(log.employee_name)}</strong></td>
+        <td>${escapeHtml(formatIndoDate(log.date))}</td>
+        <td><code style="font-size:0.95rem; font-weight:600">${escapeHtml(log.time)}</code></td>
         <td>${typeBadge}</td>
         <td>${noteBadge}</td>
+        <td>${lateReason ? `<span class="recap-reason">${escapeHtml(lateReason)}</span>` : '<span class="text-muted">-</span>'}</td>
         <td>
-          <img src="${log.selfie_url}" class="table-selfie-thumb" alt="Selfie ${log.employee_name}">
+          <img src="${escapeHtml(log.selfie_url)}" class="table-selfie-thumb" alt="Selfie ${escapeHtml(log.employee_name)}">
         </td>
       `;
       
@@ -236,7 +259,7 @@ async function loadRecapData() {
     lucide.createIcons();
   } catch (error) {
     console.error("Gagal mengambil rekap absensi:", error);
-    tbody.innerHTML = `<tr><td colspan="6" class="text-center text-danger">Gagal memuat data absensi dari server: ${error.message}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="7" class="text-center text-danger">Gagal memuat data absensi dari server: ${escapeHtml(error.message)}</td></tr>`;
   }
 }
 
@@ -305,30 +328,13 @@ function setupPhotoModal() {
 function openModal(log) {
   const modal = document.getElementById('modal-photo');
   const img = document.getElementById('modal-expanded-img');
-  const details = document.getElementById('modal-photo-details');
   
   img.src = log.selfie_url;
-  
-  const formattedCoords = (log.latitude !== null && log.latitude !== undefined) 
-    ? `${log.latitude}, ${log.longitude}` 
-    : 'Tidak Ada GPS';
-    
-  const formattedDistance = log.distance !== null ? `${log.distance} meter dari kantor` : 'Jarak tidak diketahui';
-  
-  details.innerHTML = `
-    <div>Karyawan: <span>${log.employee_name}</span></div>
-    <div>Tanggal/Waktu: <span>${formatIndoDate(log.date)} / ${log.time}</span></div>
-    <div>Tipe Absen: <span>Absen ${log.type === 'masuk' ? 'Masuk' : 'Pulang'}</span></div>
-    <div>Keterangan: <span>${log.attendance_note || 'Tepat Waktu'}</span></div>
-    <div>IP Koneksi: <span>${log.ip_address || 'Localhost'}</span></div>
-    <div>Lokasi GPS: <span>${formattedCoords} (${formattedDistance})</span></div>
-    <div>Status Kehadiran: <span style="color:var(--success)">${log.status}</span></div>
-  `;
   
   modal.classList.add('active');
 }
 
-// Generate & Export CSV File
+// Generate & Export Spreadsheet Table
 function exportRecapCSV() {
   if (currentAttendanceLogs.length === 0) {
     window.showToast("Tidak ada data absensi untuk diekspor pada bulan ini", "error");
@@ -336,38 +342,79 @@ function exportRecapCSV() {
   }
   
   const monthFilter = document.getElementById('filter-month').value;
-  
-  // CSV Headers
-  let csvContent = "Nama Karyawan,Tanggal,Jam,Tipe Absen,Keterangan,Jarak (Meter),IP Address,Latitude,Longitude,Status\n";
-  
-  // CSV Rows
-  currentAttendanceLogs.forEach(log => {
-    const name = `"${log.employee_name.replace(/"/g, '""')}"`;
-    const date = log.date;
-    const time = log.time;
-    const type = log.type === 'masuk' ? 'Masuk' : 'Pulang';
-    const note = log.attendance_note || 'Tepat Waktu';
-    const distance = log.distance !== null ? log.distance : '-';
-    const ip = log.ip_address || '-';
-    const lat = log.latitude !== null ? log.latitude : '-';
-    const lng = log.longitude !== null ? log.longitude : '-';
-    const status = log.status;
-    
-    csvContent += `${name},${date},${time},${type},${note},${distance},${ip},${lat},${lng},${status}\n`;
-  });
-  
-  // Create download link
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+
+  const rows = currentAttendanceLogs.map((log) => `
+    <tr>
+      <td>${escapeHtml(log.employee_name || '-')}</td>
+      <td>${escapeHtml(log.date || '-')}</td>
+      <td>${escapeHtml(log.time || '-')}</td>
+      <td>${escapeHtml(log.type === 'masuk' ? 'Masuk' : 'Pulang')}</td>
+      <td>${escapeHtml(log.attendance_note || 'Tepat Waktu')}</td>
+      <td>${escapeHtml((log.late_reason || '').trim() || '-')}</td>
+      <td>${escapeHtml(log.status || '-')}</td>
+    </tr>
+  `).join('');
+
+  const htmlTable = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <style>
+        body {
+          font-family: Arial, sans-serif;
+          background: #fff;
+          color: #111827;
+        }
+        table {
+          border-collapse: collapse;
+          width: 100%;
+        }
+        th, td {
+          border: 1px solid #000;
+          padding: 6px 10px;
+          font-size: 12px;
+          text-align: left;
+          vertical-align: top;
+        }
+        th {
+          font-weight: 700;
+          background: #f3f4f6;
+        }
+      </style>
+    </head>
+    <body>
+      <table>
+        <thead>
+          <tr>
+            <th>nama karyawan</th>
+            <th>Tanggal</th>
+            <th>jam</th>
+            <th>Tipe absen</th>
+            <th>Keterangan</th>
+            <th>Alasan</th>
+            <th>status</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows}
+        </tbody>
+      </table>
+    </body>
+    </html>
+  `;
+
+  const blob = new Blob(['\uFEFF' + htmlTable], { type: 'application/vnd.ms-excel;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.setAttribute("href", url);
-  link.setAttribute("download", `Rekap_Absensi_${monthFilter}.csv`);
+  link.setAttribute("download", `Rekap_Absensi_${monthFilter}.xls`);
   link.style.visibility = 'hidden';
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
   
-  window.showToast(`Berhasil mengekspor rekap ${monthFilter} ke CSV`, "success");
+  window.showToast(`Berhasil mengekspor rekap ${monthFilter} ke tabel Excel`, "success");
 }
 
 async function deleteTodayAttendance() {
