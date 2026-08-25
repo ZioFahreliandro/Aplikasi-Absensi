@@ -56,7 +56,7 @@ class AuthController extends Controller
 
         $code = (string) random_int(100000, 999999);
 
-        if ($this->isTwilioConfigured()) {
+        if ($this->isOtpDeliveryConfigured()) {
             try {
                 $otpDeliveryService->send($employee->phone, $code);
             } catch (Throwable $throwable) {
@@ -74,12 +74,18 @@ class AuthController extends Controller
         ]);
         $request->session()->forget('forgot_password_otp_verified');
 
-        return back()
+        $response = back()
             ->withInput($request->only('phone'))
-            ->with('status', $this->isTwilioConfigured()
+            ->with('status', $this->isOtpDeliveryConfigured()
                 ? 'Kode verifikasi berhasil dikirim ke nomor terdaftar.'
                 : 'Mode lokal aktif. Kode verifikasi ditampilkan di halaman untuk testing.')
-            ->with('verification_code', $code);
+            ;
+
+        if (!$this->isOtpDeliveryConfigured()) {
+            $response->with('verification_code', $code);
+        }
+
+        return $response;
     }
 
     public function verifyForgotPasswordCode(Request $request): RedirectResponse
@@ -311,8 +317,16 @@ class AuthController extends Controller
         return preg_replace('/\D+/', '', (string) $phone) ?? '';
     }
 
-    private function isTwilioConfigured(): bool
+    private function isOtpDeliveryConfigured(): bool
     {
+        $channel = strtolower((string) config('services.twilio.channel', 'sms'));
+
+        if ($channel === 'whatsapp') {
+            return filled(config('services.twilio.sid'))
+                && filled(config('services.twilio.token'))
+                && filled(config('services.twilio.whatsapp_from'));
+        }
+
         return filled(config('services.twilio.sid'))
             && filled(config('services.twilio.token'))
             && filled(config('services.twilio.from'));

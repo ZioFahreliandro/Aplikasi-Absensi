@@ -13,7 +13,7 @@ class SocialAuthController extends Controller
     public function redirectToGoogle()
     {
         if (!config('services.google.client_id') || !config('services.google.client_secret') || !config('services.google.redirect')) {
-            return redirect()->route('login')->with('error', 'Kredensial Google OAuth belum disetel. Isi GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, dan GOOGLE_REDIRECT_URL di file .env lalu jalankan php artisan config:clear.');
+            return redirect()->route('login')->with('error', 'Kredensial Google OAuth belum disetel. Isi GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, dan GOOGLE_REDIRECT_URI di file .env lalu jalankan php artisan config:clear.');
         }
 
         return Socialite::driver('google')->redirect();
