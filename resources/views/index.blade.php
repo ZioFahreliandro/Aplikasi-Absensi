@@ -417,21 +417,21 @@
                   </div>
 
                   <div class="form-group">
-                    <label for="emp-phone">No Telepon</label>
-                    <input type="tel" id="emp-phone" class="input-field" placeholder="Contoh: 081234567890" required>
-                    <p class="field-hint">Gunakan angka saja tanpa spasi atau tanda baca.</p>
+                    <label for="emp-birth-date">Tanggal Lahir</label>
+                    <input type="date" id="emp-birth-date" class="input-field" required>
+                    <p class="field-hint">Pilih tanggal lahir karyawan dalam format hari, bulan, dan tahun.</p>
                   </div>
 
                   <div class="form-group">
-                    <label for="emp-password">Password Login</label>
-                    <div id="employee-password-group">
-                      <div class="password-field">
-                        <input type="password" id="emp-password" class="input-field" placeholder="Minimal 6 karakter" minlength="6" required autocomplete="new-password">
-                        <button type="button" class="password-toggle" data-password-toggle aria-label="Tampilkan password" aria-pressed="false">
-                          <i data-lucide="eye"></i>
-                        </button>
-                      </div>
-                      <p class="field-hint" id="employee-password-hint">Password hanya diisi saat membuat karyawan baru. Saat edit, password tidak ditampilkan.</p>
+                    <label>Password Login</label>
+                    <div id="employee-password-group" class="field-note-box">
+                      <p class="field-hint" id="employee-password-hint">
+                        Password awal otomatis dibuat dari tanggal lahir dengan format <strong>DDMMYYYY</strong>.
+                        Contoh: 17 Agustus 1998 menjadi <strong>17081998</strong>.
+                      </p>
+                      <p class="field-hint">
+                        Admin tetap bisa reset password kapan saja dari tombol di tabel karyawan.
+                      </p>
                     </div>
                   </div>
 
@@ -448,13 +448,32 @@
 
               <!-- Employee List Card -->
               <div class="card employee-list-card">
-                <h3>Daftar Karyawan</h3>
+                  <div class="employee-list-header">
+                  <div class="employee-list-heading">
+                    <h3>Daftar Karyawan</h3>
+                    <p>Cari karyawan berdasarkan nama, NIP, atau tanggal lahir.</p>
+                  </div>
+                  <div class="employee-search-box">
+                    <i data-lucide="search" aria-hidden="true"></i>
+                    <input
+                      type="search"
+                      id="employee-search"
+                      class="input-field employee-search-input"
+                      placeholder="Cari karyawan..."
+                      autocomplete="off"
+                    >
+                  </div>
+                </div>
+                <div class="employee-list-table-title">
+                  <h4>Tabel Karyawan</h4>
+                  <p>NIP, tanggal lahir, nama, dan aksi berada di bawah pencarian.</p>
+                </div>
                 <div class="table-responsive">
                   <table class="app-table">
                     <thead>
                       <tr>
                         <th>NIP</th>
-                        <th>No Telepon</th>
+                        <th>Tanggal Lahir</th>
                         <th>Nama</th>
                         <th>Aksi</th>
                       </tr>
@@ -621,6 +640,36 @@
       <span class="modal-close">&times;</span>
       <div class="modal-body-img">
         <img id="modal-expanded-img" src="" alt="Selfie Absensi">
+      </div>
+    </div>
+  </div>
+
+  <!-- Reset Password Modal -->
+  <div id="modal-reset-password" class="modal">
+    <div class="modal-content modal-reset-password">
+      <span class="modal-close" id="close-reset-password">&times;</span>
+      <h3>Password Sementara Karyawan</h3>
+      <p class="location-picker-copy">Password berikut digunakan untuk login karyawan, lalu sistem akan memaksa ganti password baru.</p>
+
+      <div class="reset-password-summary">
+        <div>
+          <span class="location-picker-label">Nama Karyawan</span>
+          <strong id="reset-password-employee-name">-</strong>
+        </div>
+      </div>
+
+      <div class="reset-password-code">
+        <span>Password Sementara</span>
+        <code id="reset-password-value">-</code>
+      </div>
+
+      <div class="location-picker-actions">
+        <button type="button" id="btn-copy-reset-password" class="btn-secondary">
+          Salin Password
+        </button>
+        <button type="button" id="btn-close-reset-password" class="btn-primary">
+          Tutup
+        </button>
       </div>
     </div>
   </div>

@@ -8,6 +8,7 @@ let officeSettings = {
   office_radius: 100,
   enable_gps: false,
 };
+let passwordChangeWatcher = null;
 let currentCoords = {
   lat: null,
   lng: null,
@@ -86,6 +87,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Start digital clock
   initClock();
   fetchSettings();
+  startPasswordChangeWatcher();
   setLocationGateState(false);
   initLocationTracking();
 
@@ -530,3 +532,40 @@ function showToast(message, type = 'info') {
 // Export toast function globally for use in other files
 window.showToast = showToast;
 window.fetchSettings = fetchSettings;
+
+async function fetchEmployeePasswordStatus() {
+  try {
+    const res = await fetch('/api/employee/password-status', {
+      cache: 'no-store',
+      credentials: 'same-origin',
+      headers: {
+        'Accept': 'application/json',
+      },
+    });
+
+    if (!res.ok) return null;
+
+    return await res.json();
+  } catch (error) {
+    console.error('Gagal memeriksa status password karyawan:', error);
+    return null;
+  }
+}
+
+function startPasswordChangeWatcher() {
+  if (passwordChangeWatcher || window.location.pathname === '/force-password-change') {
+    return;
+  }
+
+  const checkAndRedirect = async () => {
+    const status = await fetchEmployeePasswordStatus();
+    if (!status || !status.must_change_password) {
+      return;
+    }
+
+    window.location.replace(status.redirect_url || '/force-password-change');
+  };
+
+  checkAndRedirect();
+  passwordChangeWatcher = setInterval(checkAndRedirect, 10000);
+}

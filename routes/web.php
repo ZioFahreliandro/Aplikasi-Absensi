@@ -13,7 +13,11 @@ Route::post('/forgot-password/verify', [AuthController::class, 'verifyForgotPass
 Route::post('/forgot-password', [AuthController::class, 'resetForgotPassword'])->name('password.update-by-phone');
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
-Route::middleware('auth')->group(function () {
+Route::middleware(['auth', 'employee.password.changed'])->group(function () {
+    Route::get('/force-password-change', [AuthController::class, 'showForcePasswordChangeForm'])->name('password.force');
+    Route::post('/force-password-change', [AuthController::class, 'forcePasswordChange'])->name('password.force.update');
+    Route::get('/api/employee/password-status', [AuthController::class, 'employeePasswordStatus'])->name('employee.password.status');
+
     Route::post('/profile/password', [AuthController::class, 'updatePassword'])->name('profile.password.update');
 
     Route::get('/attendance', function () {
@@ -33,6 +37,7 @@ Route::middleware(['auth', 'can:access-admin'])->group(function () {
     Route::get('/api/employees', [AdminController::class, 'getEmployees']);
     Route::post('/api/employees', [AdminController::class, 'storeEmployee']);
     Route::put('/api/employees/{id}', [AdminController::class, 'updateEmployee']);
+    Route::post('/api/employees/{id}/reset-password', [AdminController::class, 'resetEmployeePassword']);
     Route::delete('/api/employees/{id}', [AdminController::class, 'deleteEmployee']);
     Route::get('/api/attendance', [AdminController::class, 'getAttendance']);
     Route::delete('/api/attendance/today', [AdminController::class, 'deleteTodayAttendance']);

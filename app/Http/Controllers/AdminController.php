@@ -7,7 +7,8 @@ use App\Models\Attendance;
 use App\Models\Setting;
 use App\Models\User;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
+use Carbon\Carbon;
 
 class AdminController extends Controller
 {
@@ -24,29 +25,27 @@ class AdminController extends Controller
      */
     public function storeEmployee(Request $request)
     {
-        $request->merge([
-            'phone' => $this->normalizePhone($request->input('phone')),
-        ]);
-
         $request->validate([
             'name' => 'required|string|max:255',
             'nip' => 'required|string|unique:employees,nip',
-            'phone' => 'required|string|max:20|unique:employees,phone',
-            'password' => 'required|string|min:6'
+            'birth_date' => 'required|date',
         ]);
+
+        $temporaryPassword = $this->birthDatePassword($request->birth_date);
 
         $employee = Employee::create([
             'name' => $request->name,
             'nip' => $request->nip,
-            'phone' => $request->phone,
-            'password' => Hash::make($request->password)
+            'birth_date' => $request->birth_date,
+            'password' => $temporaryPassword,
+            'must_change_password' => true,
         ]);
 
         User::updateOrCreate(
             ['email' => $employee->nip . '@local'],
             [
                 'name' => $employee->name,
-                'password' => $request->password,
+                'password' => $temporaryPassword,
                 'role' => 'employee',
             ]
         );
@@ -64,14 +63,10 @@ class AdminController extends Controller
             return response()->json(['error' => 'Karyawan tidak ditemukan'], 404);
         }
 
-        $request->merge([
-            'phone' => $this->normalizePhone($request->input('phone')),
-        ]);
-
         $request->validate([
             'name' => 'required|string|max:255',
             'nip' => 'required|string|unique:employees,nip,' . $id,
-            'phone' => 'required|string|max:20|unique:employees,phone,' . $id,
+            'birth_date' => 'required|date',
             'password' => 'nullable|string|min:6'
         ]);
 
@@ -79,11 +74,12 @@ class AdminController extends Controller
         $employeeData = [
             'name' => $request->name,
             'nip' => $request->nip,
-            'phone' => $request->phone,
+            'birth_date' => $request->birth_date,
         ];
 
         if ($request->filled('password')) {
-            $employeeData['password'] = Hash::make($request->password);
+            $employeeData['password'] = $request->password;
+            $employeeData['must_change_password'] = true;
         }
 
         $employee->update($employeeData);
@@ -104,6 +100,40 @@ class AdminController extends Controller
         );
 
         return response()->json($employee);
+    }
+
+    /**
+     * Reset employee password to a temporary random value.
+     */
+    public function resetEmployeePassword($id)
+    {
+        $employee = Employee::find($id);
+
+        if (!$employee) {
+            return response()->json(['error' => 'Karyawan tidak ditemukan'], 404);
+        }
+
+        $temporaryPassword = Str::password(10);
+
+        $employee->update([
+            'password' => $temporaryPassword,
+            'must_change_password' => true,
+        ]);
+
+        User::updateOrCreate(
+            ['email' => $employee->nip . '@local'],
+            [
+                'name' => $employee->name,
+                'password' => $temporaryPassword,
+                'role' => 'employee',
+            ]
+        );
+
+        return response()->json([
+            'message' => 'Password karyawan berhasil di-reset.',
+            'temporary_password' => $temporaryPassword,
+            'employee' => $employee,
+        ]);
     }
 
     /**
@@ -185,6 +215,11 @@ class AdminController extends Controller
         return $time;
     }
 
+    private function birthDatePassword(string $birthDate): string
+    {
+        return Carbon::parse($birthDate)->format('dmY');
+    }
+
     /**
      * Get attendance records (with monthly filtering).
      */
@@ -217,8 +252,4 @@ class AdminController extends Controller
         return response()->json(['message' => 'Rekapan absensi hari ini berhasil dihapus', 'deleted' => $deleted]);
     }
 
-    private function normalizePhone(?string $phone): string
-    {
-        return preg_replace('/\D+/', '', (string) $phone) ?? '';
-    }
 }
