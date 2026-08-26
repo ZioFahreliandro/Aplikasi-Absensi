@@ -66,6 +66,8 @@ function updateLateReasonVisibility() {
 
   const shouldShow = isLateForCheckin();
   lateReasonGroup.hidden = !shouldShow;
+  lateReasonInput.required = shouldShow;
+  lateReasonInput.setAttribute('aria-hidden', shouldShow ? 'false' : 'true');
 
   if (!shouldShow) {
     lateReasonInput.value = '';
@@ -73,7 +75,7 @@ function updateLateReasonVisibility() {
       attendanceSelectionHelp.textContent = 'Pilih Masuk atau Pulang dulu, lalu lanjut ambil foto.';
     }
   } else if (attendanceSelectionHelp) {
-    attendanceSelectionHelp.textContent = 'Kamu terlambat masuk. Alasan di bawah ini opsional.';
+    attendanceSelectionHelp.textContent = 'Kamu terlambat masuk. Alasan di bawah ini wajib diisi.';
   }
 
   refreshAttendanceButtonState();
@@ -208,7 +210,9 @@ function refreshAttendanceButtonState() {
   if (btnClockOut) btnClockOut.disabled = !hasActiveLocation();
 
   if (btnSubmitAttendance) {
-    btnSubmitAttendance.disabled = !hasActiveLocation() || !pendingAttendanceType;
+    const lateReasonRequired = pendingAttendanceType === 'masuk' && isLateForCheckin();
+    const lateReasonMissing = lateReasonRequired && !(lateReasonInput?.value || '').trim();
+    btnSubmitAttendance.disabled = !hasActiveLocation() || !pendingAttendanceType || lateReasonMissing;
   }
 }
 
@@ -430,6 +434,15 @@ async function submitAttendance(type = pendingAttendanceType) {
 
     if (distance > officeSettings.office_radius) {
       showToast(`Anda masih ${Math.round(distance)} meter dari kantor. Radius maksimal ${officeSettings.office_radius} meter.`, "error");
+      return;
+    }
+  }
+
+  if (type === 'masuk' && isLateForCheckin()) {
+    const lateReason = (lateReasonInput?.value || '').trim();
+    if (!lateReason) {
+      showToast('Alasan telat wajib diisi saat absen masuk terlambat.', 'error');
+      if (lateReasonInput) lateReasonInput.focus();
       return;
     }
   }

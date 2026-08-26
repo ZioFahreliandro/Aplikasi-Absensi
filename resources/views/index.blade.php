@@ -26,6 +26,7 @@
         $employeeNip = null;
         $isAdmin = $currentUser && (($currentUser->role ?? null) === 'admin');
         $isEmployee = $currentUser && !$isAdmin;
+        $adminMenuOpen = $isAdmin && (session('status') || $errors->any());
 
         if ($currentUser && !empty($currentUser->email) && str_contains($currentUser->email, '@local')) {
           $employeeNip = explode('@', $currentUser->email, 2)[0];
@@ -111,19 +112,23 @@
         </div>
       </details>
       @else
-      <details class="employee-header-profile" @if(session('status') || $errors->any()) open @endif>
-        <summary class="employee-header-summary">
-          <div class="profile-avatar profile-avatar-sm">{{ $employeeInitial }}</div>
-          <div class="employee-header-summary-copy">
-            <h2>{{ $employeeName }}</h2>
-            <p>Admin Aktif</p>
-          </div>
-          <span class="employee-header-chevron" aria-hidden="true">
-            <i data-lucide="chevron-down"></i>
+      <div class="admin-menu-shell">
+        <button
+          id="admin-menu-toggle"
+          type="button"
+          class="admin-menu-toggle{{ $adminMenuOpen ? ' active' : '' }}"
+          aria-label="Buka menu admin"
+          aria-expanded="{{ $adminMenuOpen ? 'true' : 'false' }}"
+          aria-controls="admin-menu-panel"
+        >
+          <span class="admin-menu-icon" aria-hidden="true">
+            <span></span>
+            <span></span>
+            <span></span>
           </span>
-        </summary>
+        </button>
 
-        <div class="employee-header-panel">
+        <div id="admin-menu-panel" class="admin-menu-panel{{ $adminMenuOpen ? ' is-open' : '' }}" @unless($adminMenuOpen) hidden @endunless>
           @if (session('status'))
             <div class="profile-alert success">
               {{ session('status') }}
@@ -136,11 +141,32 @@
             </div>
           @endif
 
+          <div class="admin-menu-profile">
+            <div class="profile-avatar profile-avatar-sm">{{ $employeeInitial }}</div>
+            <div class="employee-header-summary-copy">
+              <span class="profile-kicker">Admin</span>
+              <h2>{{ $employeeName }}</h2>
+              <p>Admin Aktif</p>
+            </div>
+          </div>
+
           <div class="profile-meta profile-meta-compact">
             <div>
               <span>Status</span>
               <strong>Admin Aktif</strong>
             </div>
+          </div>
+
+          <div class="admin-menu-links">
+            <button type="button" class="admin-menu-link active" data-admin-tab-target="tab-recap">
+              <i data-lucide="file-text"></i> Rekap Absensi
+            </button>
+            <button type="button" class="admin-menu-link" data-admin-tab-target="tab-employees">
+              <i data-lucide="users"></i> Kelola Karyawan
+            </button>
+            <button type="button" class="admin-menu-link" data-admin-tab-target="tab-settings">
+              <i data-lucide="settings"></i> Pengaturan Kantor
+            </button>
           </div>
 
           <form action="{{ route('profile.password.update') }}" method="POST" class="profile-password-form profile-password-form-compact">
@@ -179,8 +205,9 @@
               <i data-lucide="key-round"></i> Simpan Password
             </button>
           </form>
+
         </div>
-      </details>
+      </div>
       @endif
     </div>
     <nav class="header-nav">
@@ -190,16 +217,21 @@
       </button>
       @endcannot
       @can('access-admin')
-        <button id="nav-admin" class="nav-btn">
-          <i data-lucide="layout-dashboard"></i> Admin
+      <form method="POST" action="{{ route('logout') }}">
+        @csrf
+        <button type="submit" class="nav-btn nav-btn-logout">
+          <i data-lucide="log-out"></i> Keluar
         </button>
+      </form>
       @endcan
+      @cannot('access-admin')
       <form method="POST" action="{{ route('logout') }}">
         @csrf
         <button type="submit" class="nav-btn">
           <i data-lucide="log-out"></i> Keluar
         </button>
       </form>
+      @endcannot
     </nav>
   </header>
 
@@ -245,8 +277,8 @@
               <p id="attendance-selection-help" class="camera-tip" style="margin-top: 10px;">Pilih Masuk atau Pulang dulu, lalu lanjut ambil foto.</p>
               <div id="late-reason-group" class="form-group late-reason-group" hidden>
                 <label for="late-reason">Alasan Telat</label>
-                <textarea id="late-reason" class="input-field late-reason-input" rows="3" placeholder="Jelaskan alasan keterlambatan"></textarea>
-                <p class="field-hint">Opsional saat terlambat, kalau mau bisa diisi untuk catatan.</p>
+                <textarea id="late-reason" class="input-field late-reason-input" rows="3" placeholder="Jelaskan alasan keterlambatan" required></textarea>
+                <p class="field-hint">Wajib diisi saat absen masuk terlambat. Jika tidak telat, kolom ini tidak akan muncul.</p>
               </div>
             </form>
           </div>
@@ -294,20 +326,7 @@
     @can('access-admin')
     <!-- 2. ADMIN DASHBOARD VIEW -->
     <section id="view-admin" class="view-section active">
-      <div class="admin-layout">
-
-        <!-- Sidebar Navigation for Admin Sections -->
-        <aside class="admin-sidebar">
-          <button id="tab-recap" class="tab-btn active">
-            <i data-lucide="file-text"></i> Rekap Absensi
-          </button>
-          <button id="tab-employees" class="tab-btn">
-            <i data-lucide="users"></i> Kelola Karyawan
-          </button>
-          <button id="tab-settings" class="tab-btn">
-            <i data-lucide="settings"></i> Pengaturan Kantor
-          </button>
-        </aside>
+      <div class="admin-layout admin-layout-menu">
 
         <!-- Admin Content Area -->
         <div class="admin-content">
@@ -417,17 +436,11 @@
                   </div>
 
                   <div class="form-group">
-                    <label for="emp-birth-date">Tanggal Lahir</label>
-                    <input type="date" id="emp-birth-date" class="input-field" required>
-                    <p class="field-hint">Pilih tanggal lahir karyawan dalam format hari, bulan, dan tahun.</p>
-                  </div>
-
-                  <div class="form-group">
                     <label>Password Login</label>
                     <div id="employee-password-group" class="field-note-box">
                       <p class="field-hint" id="employee-password-hint">
-                        Password awal otomatis dibuat dari tanggal lahir dengan format <strong>DDMMYYYY</strong>.
-                        Contoh: 17 Agustus 1998 menjadi <strong>17081998</strong>.
+                        Password awal otomatis dibuat dari nama yang diinput.
+                        Contoh: nama <strong>Budi Santoso</strong> akan memakai password <strong>Budi Santoso</strong>.
                       </p>
                       <p class="field-hint">
                         Admin tetap bisa reset password kapan saja dari tombol di tabel karyawan.
@@ -451,7 +464,7 @@
                   <div class="employee-list-header">
                   <div class="employee-list-heading">
                     <h3>Daftar Karyawan</h3>
-                    <p>Cari karyawan berdasarkan nama, NIP, atau tanggal lahir.</p>
+                    <p>Cari karyawan berdasarkan nama atau NIP.</p>
                   </div>
                   <div class="employee-search-box">
                     <i data-lucide="search" aria-hidden="true"></i>
@@ -466,14 +479,13 @@
                 </div>
                 <div class="employee-list-table-title">
                   <h4>Tabel Karyawan</h4>
-                  <p>NIP, tanggal lahir, nama, dan aksi berada di bawah pencarian.</p>
+                  <p>NIP, nama, dan aksi berada di bawah pencarian.</p>
                 </div>
                 <div class="table-responsive">
                   <table class="app-table">
                     <thead>
                       <tr>
                         <th>NIP</th>
-                        <th>Tanggal Lahir</th>
                         <th>Nama</th>
                         <th>Aksi</th>
                       </tr>
@@ -561,7 +573,7 @@
                     </div>
                   </div>
 
-                  <p class="field-hint">Jika absen masuk lewat jam masuk, keterangan akan menjadi <strong>Telat Masuk</strong>. Jika absen pulang sebelum jam pulang, keterangan akan menjadi <strong>Pulang Cepat</strong>.</p>
+                  <p class="field-hint">Jika absen masuk lewat jam masuk, keterangan akan menjadi <strong>Anda Telat</strong>. Jika absen pulang sebelum jam pulang, keterangan akan menjadi <strong>Pulang Cepat</strong>.</p>
 
                   <div class="helper-buttons">
                     <button type="button" id="btn-get-current-coords" class="btn-outline-info">
@@ -683,6 +695,19 @@
       <span class="modal-close" id="close-location-picker">&times;</span>
       <h3>Pilih Titik Kantor</h3>
       <p class="location-picker-copy">Klik titik kantor di peta. Latitude dan longitude akan terisi otomatis.</p>
+
+      <div class="location-picker-search">
+        <input
+          type="text"
+          id="location-picker-search-input"
+          class="input-field location-picker-search-input"
+          placeholder="Cari alamat, kota, atau nama tempat..."
+          autocomplete="off"
+        >
+        <button type="button" id="btn-search-location-picker" class="btn-primary location-picker-search-btn">
+          Cari
+        </button>
+      </div>
 
       <div class="location-picker-meta">
         <div>

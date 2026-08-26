@@ -46,6 +46,7 @@ if (typeof window.showToast !== 'function') {
 document.addEventListener('DOMContentLoaded', () => {
   // Navigation & Sub-tab management
   setupAdminTabs();
+  setupAdminMenu();
   restoreActiveAdminTab();
   
   // Set default month input filter to current month (YYYY-MM)
@@ -111,6 +112,16 @@ function setupAdminTabs() {
     'tab-settings': 'sub-view-settings'
   };
 
+  document.querySelectorAll('[data-admin-tab-target]').forEach((tabBtn) => {
+    const tabId = tabBtn.getAttribute('data-admin-tab-target');
+    if (!tabId || !tabs[tabId]) return;
+
+    tabBtn.addEventListener('click', () => {
+      activateAdminTab(tabId, tabs);
+      if (window.closeAdminMenu) window.closeAdminMenu();
+    });
+  });
+
   Object.keys(tabs).forEach(tabId => {
     const tabBtn = document.getElementById(tabId);
     if (!tabBtn) return;
@@ -118,6 +129,69 @@ function setupAdminTabs() {
       activateAdminTab(tabId, tabs);
     });
   });
+}
+
+function setupAdminMenu() {
+  const toggle = document.getElementById('admin-menu-toggle');
+  const panel = document.getElementById('admin-menu-panel');
+  if (!toggle || !panel) return;
+
+  let closeTimer = null;
+
+  const closeMenu = () => {
+    if (panel.hidden) return;
+
+    window.clearTimeout(closeTimer);
+    panel.classList.remove('is-open');
+    toggle.setAttribute('aria-expanded', 'false');
+    toggle.classList.remove('active');
+
+    closeTimer = window.setTimeout(() => {
+      if (!panel.classList.contains('is-open')) {
+        panel.hidden = true;
+      }
+    }, 240);
+  };
+
+  const openMenu = () => {
+    window.clearTimeout(closeTimer);
+    panel.hidden = false;
+    panel.classList.remove('is-open');
+    panel.getBoundingClientRect();
+    window.requestAnimationFrame(() => {
+      panel.classList.add('is-open');
+    });
+    toggle.setAttribute('aria-expanded', 'true');
+    toggle.classList.add('active');
+  };
+
+  toggle.addEventListener('click', (event) => {
+    event.stopPropagation();
+    if (panel.hidden) {
+      openMenu();
+    } else {
+      closeMenu();
+    }
+  });
+
+  panel.addEventListener('click', (event) => {
+    event.stopPropagation();
+  });
+
+  document.addEventListener('click', () => {
+    if (!panel.hidden) {
+      closeMenu();
+    }
+  });
+
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') {
+      closeMenu();
+    }
+  });
+
+  window.closeAdminMenu = closeMenu;
+  window.openAdminMenu = openMenu;
 }
 
 function activateAdminTab(tabId, tabs = null) {
@@ -138,6 +212,10 @@ function activateAdminTab(tabId, tabs = null) {
   const activeView = document.getElementById(tabMap[tabId]);
   if (activeTab) activeTab.classList.add('active');
   if (activeView) activeView.classList.add('active');
+
+  document.querySelectorAll('[data-admin-tab-target]').forEach((button) => {
+    button.classList.toggle('active', button.getAttribute('data-admin-tab-target') === tabId);
+  });
 
   sessionStorage.setItem(ADMIN_ACTIVE_TAB_KEY, tabId);
 
@@ -172,10 +250,10 @@ function escapeHtml(value) {
 }
 
 function getAttendanceSummary(log) {
-  const note = log.attendance_note || 'Tepat Waktu';
+  const note = log.attendance_note || 'Anda Disiplin';
   const reason = (log.late_reason || '').trim();
 
-  if (reason && note !== 'Tepat Waktu') {
+  if (reason && note !== 'Anda Disiplin') {
     return `${note} - ${reason}`;
   }
 
@@ -233,9 +311,9 @@ async function loadRecapData() {
         : `<span class="indicator-badge danger" style="padding:0.2rem 0.5rem; background:rgba(239,68,68,0.15)">Pulang</span>`;
 
       // Attendance Note Badge
-      const note = log.attendance_note || 'Tepat Waktu';
-      const noteBadge = note === 'Tepat Waktu'
-        ? `<span class="indicator-badge success" style="padding:0.2rem 0.5rem">Tepat Waktu</span>`
+      const note = log.attendance_note || 'Anda Disiplin';
+      const noteBadge = note === 'Anda Disiplin'
+        ? `<span class="indicator-badge success" style="padding:0.2rem 0.5rem">Anda Disiplin</span>`
         : `<span class="indicator-badge warning" style="padding:0.2rem 0.5rem">${escapeHtml(note)}</span>`;
       const lateReason = (log.late_reason || '').trim();
       
@@ -400,7 +478,7 @@ function exportRecapCSV() {
       <td>${escapeHtml(log.date || '-')}</td>
       <td>${escapeHtml(log.time || '-')}</td>
       <td>${escapeHtml(log.type === 'masuk' ? 'Masuk' : 'Pulang')}</td>
-      <td>${escapeHtml(log.attendance_note || 'Tepat Waktu')}</td>
+      <td>${escapeHtml(log.attendance_note || 'Anda Disiplin')}</td>
       <td>${escapeHtml((log.late_reason || '').trim() || '-')}</td>
       <td>${escapeHtml(log.status || '-')}</td>
     </tr>
@@ -523,13 +601,6 @@ function normalizeDateForInput(dateValue) {
   return '';
 }
 
-function formatBirthDateForSearch(dateValue) {
-  const normalized = normalizeDateForInput(dateValue);
-  if (!normalized) return '';
-
-  return `${normalized} ${formatIndoDate(normalized)}`;
-}
-
 // ----------------------------------------------------
 // 2. EMPLOYEE CRUD SECTION
 // ----------------------------------------------------
@@ -538,7 +609,7 @@ let employeeSearchTerm = '';
 
 async function loadEmployeeData() {
   const tbody = document.getElementById('employee-table-body');
-  tbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted">Memuat karyawan...</td></tr>`;
+  tbody.innerHTML = `<tr><td colspan="3" class="text-center text-muted">Memuat karyawan...</td></tr>`;
   
   try {
     const res = await fetch(`/api/employees?t=${Date.now()}`, {
@@ -577,7 +648,7 @@ function getFilteredEmployees() {
   const filtered = !term
     ? currentEmployees.slice()
     : currentEmployees.filter((emp) => {
-      return [emp.name, emp.nip, formatBirthDateForSearch(emp.birth_date)]
+      return [emp.name, emp.nip]
         .filter(Boolean)
         .some((value) => String(value).toLowerCase().includes(term));
     });
@@ -590,7 +661,7 @@ function renderEmployeeTable() {
   if (!tbody) return;
 
   if (currentEmployees.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted">Belum ada karyawan terdaftar.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="3" class="text-center text-muted">Belum ada karyawan terdaftar.</td></tr>`;
     return;
   }
 
@@ -600,7 +671,7 @@ function renderEmployeeTable() {
     const term = escapeHtml(employeeSearchTerm);
     tbody.innerHTML = `
       <tr>
-        <td colspan="4" class="text-center text-muted">
+        <td colspan="3" class="text-center text-muted">
           Tidak ditemukan karyawan untuk pencarian "${term}".
         </td>
       </tr>
@@ -620,11 +691,9 @@ function createEmployeeRow(emp) {
   const passwordStatus = emp.must_change_password
     ? '<span class="indicator-badge warning" style="margin-top:0.35rem;">Wajib ganti password</span>'
     : '<span class="indicator-badge success" style="margin-top:0.35rem;">Password aktif</span>';
-  const birthDate = formatIndoDate(emp.birth_date);
 
   tr.innerHTML = `
     <td><code>${emp.nip || '-'}</code></td>
-    <td><code>${birthDate || '-'}</code></td>
     <td>
       <strong>${emp.name}</strong>
       <div>${passwordStatus}</div>
@@ -668,10 +737,9 @@ async function saveEmployee(e) {
   const id = document.getElementById('employee-id').value;
   const name = document.getElementById('emp-name').value.trim();
   const nip = document.getElementById('emp-nip').value.trim();
-  const birthDate = document.getElementById('emp-birth-date').value;
   const isEditing = Boolean(id);
   
-  if (!name || !nip || !birthDate) {
+  if (!name || !nip) {
     window.showToast("Semua data input karyawan wajib diisi!", "error");
     return;
   }
@@ -686,7 +754,7 @@ async function saveEmployee(e) {
         'Content-Type': 'application/json',
         'X-CSRF-TOKEN': getCsrfToken()
       },
-      body: JSON.stringify({ name, nip, birth_date: birthDate })
+      body: JSON.stringify({ name, nip })
     });
     
     if (res.ok) {
@@ -711,7 +779,6 @@ function editEmployee(emp) {
   document.getElementById('employee-id').value = emp.id;
   document.getElementById('emp-name').value = emp.name;
   document.getElementById('emp-nip').value = emp.nip;
-  document.getElementById('emp-birth-date').value = normalizeDateForInput(emp.birth_date);
   document.getElementById('employee-password-group').style.display = 'none';
   
   document.getElementById('employee-form-title').textContent = "Edit Data Karyawan";
@@ -724,7 +791,6 @@ function resetEmployeeForm() {
   document.getElementById('employee-id').value = '';
   document.getElementById('emp-name').value = '';
   document.getElementById('emp-nip').value = '';
-  document.getElementById('emp-birth-date').value = '';
   document.getElementById('employee-password-group').style.display = 'block';
   
   document.getElementById('employee-form-title').textContent = "Tambah Karyawan Baru";
@@ -800,6 +866,8 @@ let locationPickerSelection = {
 
 let locationPickerMap = null;
 let locationPickerMarker = null;
+let locationPickerCircle = null;
+let locationPickerGeocoder = null;
 
 function buildGoogleMapsBrowseUrl(lat, lng) {
   return `https://www.google.com/maps?q=${lat},${lng}`;
@@ -838,12 +906,20 @@ function ensureLocationPickerMap() {
       : fallbackPosition;
 
   if (!locationPickerMap) {
+    locationPickerGeocoder = new google.maps.Geocoder();
     locationPickerMap = new google.maps.Map(mapElement, {
       center: initialPosition,
-      zoom: 16,
-      mapTypeControl: false,
+      zoom: 18,
+      maxZoom: 21,
+      mapTypeId: google.maps.MapTypeId.HYBRID,
+      mapTypeControl: true,
+      mapTypeControlOptions: {
+        position: google.maps.ControlPosition.TOP_RIGHT,
+      },
       streetViewControl: false,
       fullscreenControl: false,
+      zoomControl: true,
+      gestureHandling: 'greedy',
       clickableIcons: true,
     });
 
@@ -851,6 +927,17 @@ function ensureLocationPickerMap() {
       position: initialPosition,
       map: locationPickerMap,
       draggable: true,
+    });
+
+    locationPickerCircle = new google.maps.Circle({
+      map: locationPickerMap,
+      center: initialPosition,
+      radius: 100,
+      fillColor: '#2563eb',
+      fillOpacity: 0.2,
+      strokeColor: '#2563eb',
+      strokeOpacity: 0.75,
+      strokeWeight: 2,
     });
 
     locationPickerMap.addListener('click', (event) => {
@@ -869,6 +956,9 @@ function ensureLocationPickerMap() {
 
   if (locationPickerMarker) {
     locationPickerMarker.setPosition(initialPosition);
+  }
+  if (locationPickerCircle) {
+    locationPickerCircle.setCenter(initialPosition);
   }
 
   updateLocationPickerStatus('Klik titik di peta untuk memilih lokasi kantor.');
@@ -987,16 +1077,36 @@ function setupLocationPicker() {
   const closeBtn = document.getElementById('close-location-picker');
   const useCurrentBtn = document.getElementById('btn-use-current-location');
   const applyBtn = document.getElementById('btn-apply-picked-location');
+  const searchBtn = document.getElementById('btn-search-location-picker');
+  const searchInput = document.getElementById('location-picker-search-input');
   const latInput = document.getElementById('set-office-lat');
   const lngInput = document.getElementById('set-office-lng');
+  const radiusInput = document.getElementById('set-office-radius');
 
   if (!modal || !closeBtn || !useCurrentBtn || !applyBtn || !latInput || !lngInput) return;
 
   closeBtn.addEventListener('click', closeLocationPicker);
   useCurrentBtn.addEventListener('click', centerPickerOnCurrentLocation);
   applyBtn.addEventListener('click', applyPickedLocation);
+  if (searchBtn) searchBtn.addEventListener('click', searchLocationPickerAddress);
+  if (searchInput) {
+    searchInput.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        searchLocationPickerAddress();
+      }
+    });
+  }
   latInput.addEventListener('input', syncPickerFromInputs);
   lngInput.addEventListener('input', syncPickerFromInputs);
+  if (radiusInput) {
+    radiusInput.addEventListener('input', () => {
+      if (locationPickerCircle) {
+        const radiusValue = parseFloat(radiusInput.value);
+        locationPickerCircle.setRadius(Number.isNaN(radiusValue) ? 100 : radiusValue);
+      }
+    });
+  }
 
   modal.addEventListener('click', (event) => {
     if (event.target === modal) {
@@ -1032,6 +1142,49 @@ function openLocationPicker() {
         });
       }
     }
+  });
+}
+
+function searchLocationPickerAddress() {
+  const input = document.getElementById('location-picker-search-input');
+  const query = input?.value?.trim();
+
+  if (!query) {
+    window.showToast('Masukkan alamat atau nama tempat yang ingin dicari.', 'error');
+    return;
+  }
+
+  if (!ensureLocationPickerMap()) return;
+  if (!locationPickerGeocoder) {
+    window.showToast('Geocoder Google Maps belum siap.', 'error');
+    return;
+  }
+
+  updateLocationPickerStatus(`Mencari "${query}"...`);
+
+  locationPickerGeocoder.geocode({ address: query }, (results, status) => {
+    if (status !== 'OK' || !results || !results[0]) {
+      window.showToast('Lokasi tidak ditemukan. Coba kata kunci lain.', 'error');
+      updateLocationPickerStatus('Pencarian gagal. Silakan coba lagi.');
+      return;
+    }
+
+    const result = results[0];
+    const location = result.geometry.location;
+    setPickedLocation(location.lat(), location.lng(), true);
+
+    if (locationPickerMap) {
+      if (result.geometry.viewport) {
+        locationPickerMap.fitBounds(result.geometry.viewport);
+      } else {
+        locationPickerMap.setCenter(location);
+        locationPickerMap.setZoom(16);
+      }
+      google.maps.event.trigger(locationPickerMap, 'resize');
+    }
+
+    window.showToast('Lokasi ditemukan dan peta sudah dipusatkan.', 'success');
+    updateLocationPickerStatus(`Hasil pencarian: ${result.formatted_address || query}`);
   });
 }
 
@@ -1102,6 +1255,12 @@ function setPickedLocation(lat, lng, syncInputs = true) {
     };
     locationPickerMarker.setPosition(position);
     locationPickerMap.setCenter(position);
+    if (locationPickerCircle) {
+      const radiusInput = document.getElementById('set-office-radius');
+      const radiusValue = parseFloat(radiusInput?.value);
+      locationPickerCircle.setCenter(position);
+      locationPickerCircle.setRadius(Number.isNaN(radiusValue) ? 100 : radiusValue);
+    }
   }
 
   updateLocationPickerStatus(`Titik dipilih: ${Number(lat).toFixed(6)}, ${Number(lng).toFixed(6)}`);

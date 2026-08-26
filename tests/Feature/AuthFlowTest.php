@@ -139,7 +139,7 @@ class AuthFlowTest extends TestCase
         ]);
     }
 
-    public function test_admin_created_employee_uses_birth_date_as_initial_password(): void
+    public function test_admin_created_employee_uses_name_as_initial_password(): void
     {
         $admin = User::factory()->create([
             'email' => 'admin@example.com',
@@ -151,7 +151,6 @@ class AuthFlowTest extends TestCase
         $response = $this->postJson('/api/employees', [
             'name' => 'Rina Putri',
             'nip' => '20011231',
-            'birth_date' => '2001-12-31',
         ]);
 
         $response->assertCreated();
@@ -160,7 +159,7 @@ class AuthFlowTest extends TestCase
 
         $this->post(route('login.post'), [
             'nip' => '20011231',
-            'password' => '31122001',
+            'password' => 'Rina Putri',
         ])
             ->assertRedirect(route('password.force'));
     }
