@@ -4,6 +4,7 @@ const MONTHS = [
   'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
 ];
 const ADMIN_ACTIVE_TAB_KEY = 'absengo_admin_active_tab';
+const EMPLOYEE_SEARCH_KEY = 'absengo_employee_search';
 
 if (typeof window.showToast !== 'function') {
   window.showToast = function showToast(message, type = 'info') {
@@ -65,6 +66,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Listeners for Employee CRUD
   document.getElementById('employee-form').addEventListener('submit', saveEmployee);
   document.getElementById('btn-cancel-edit').addEventListener('click', resetEmployeeForm);
+  setupEmployeeSearch();
   
   // Listeners for Settings Form
   document.getElementById('settings-form').addEventListener('submit', saveSettings);
@@ -72,6 +74,7 @@ document.addEventListener('DOMContentLoaded', () => {
   
   // Modal Photo listener
   setupPhotoModal();
+  setupResetPasswordModal();
   setupLocationPicker();
 
   // Auto-load admin data when the dashboard opens for the first time.
@@ -325,6 +328,54 @@ function setupPhotoModal() {
   });
 }
 
+function setupResetPasswordModal() {
+  const modal = document.getElementById('modal-reset-password');
+  const closeBtn = document.getElementById('close-reset-password');
+  const closeActionBtn = document.getElementById('btn-close-reset-password');
+  const copyBtn = document.getElementById('btn-copy-reset-password');
+
+  if (!modal) return;
+
+  const closeModal = () => {
+    modal.classList.remove('active');
+  };
+
+  if (closeBtn) closeBtn.addEventListener('click', closeModal);
+  if (closeActionBtn) closeActionBtn.addEventListener('click', closeModal);
+  if (copyBtn) {
+    copyBtn.addEventListener('click', async () => {
+      const code = document.getElementById('reset-password-value')?.textContent || '';
+      if (!code || code === '-') return;
+
+      try {
+        await navigator.clipboard.writeText(code);
+        window.showToast('Password sementara disalin ke clipboard.', 'success');
+      } catch (error) {
+        console.error(error);
+        window.showToast('Gagal menyalin password sementara.', 'error');
+      }
+    });
+  }
+
+  modal.addEventListener('click', (event) => {
+    if (event.target === modal) {
+      closeModal();
+    }
+  });
+}
+
+function openResetPasswordModal(name, password) {
+  const modal = document.getElementById('modal-reset-password');
+  const nameEl = document.getElementById('reset-password-employee-name');
+  const passwordEl = document.getElementById('reset-password-value');
+
+  if (!modal || !nameEl || !passwordEl) return;
+
+  nameEl.textContent = name || '-';
+  passwordEl.textContent = password || '-';
+  modal.classList.add('active');
+}
+
 function openModal(log) {
   const modal = document.getElementById('modal-photo');
   const img = document.getElementById('modal-expanded-img');
@@ -461,9 +512,30 @@ function formatIndoDate(dateStr) {
   return `${d} ${MONTHS[m]} ${y}`;
 }
 
+function normalizeDateForInput(dateValue) {
+  if (!dateValue) return '';
+
+  const parsed = String(dateValue).split('T')[0];
+  if (/^\d{4}-\d{2}-\d{2}$/.test(parsed)) {
+    return parsed;
+  }
+
+  return '';
+}
+
+function formatBirthDateForSearch(dateValue) {
+  const normalized = normalizeDateForInput(dateValue);
+  if (!normalized) return '';
+
+  return `${normalized} ${formatIndoDate(normalized)}`;
+}
+
 // ----------------------------------------------------
 // 2. EMPLOYEE CRUD SECTION
 // ----------------------------------------------------
+let currentEmployees = [];
+let employeeSearchTerm = '';
+
 async function loadEmployeeData() {
   const tbody = document.getElementById('employee-table-body');
   tbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted">Memuat karyawan...</td></tr>`;
@@ -476,37 +548,100 @@ async function loadEmployeeData() {
       },
     });
     const employees = await res.json();
-    
-    if (employees.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted">Belum ada karyawan terdaftar.</td></tr>`;
-      return;
-    }
-    
-    tbody.innerHTML = '';
-    employees.forEach(emp => {
-      tbody.appendChild(createEmployeeRow(emp));
-    });
+    currentEmployees = Array.isArray(employees) ? employees : [];
+    renderEmployeeTable();
   } catch (error) {
     console.error("Gagal memuat karyawan:", error);
     tbody.innerHTML = `<tr><td colspan="4" class="text-center text-danger">Gagal memuat karyawan dari server.</td></tr>`;
   }
 }
 
+function setupEmployeeSearch() {
+  const searchInput = document.getElementById('employee-search');
+  if (!searchInput) return;
+
+  employeeSearchTerm = (searchInput.value || sessionStorage.getItem(EMPLOYEE_SEARCH_KEY) || '').trim();
+  searchInput.value = employeeSearchTerm;
+
+  searchInput.addEventListener('input', (event) => {
+    employeeSearchTerm = event.target.value.trim();
+    sessionStorage.setItem(EMPLOYEE_SEARCH_KEY, employeeSearchTerm);
+    renderEmployeeTable();
+  });
+
+  renderEmployeeTable();
+}
+
+function getFilteredEmployees() {
+  const term = employeeSearchTerm.toLowerCase();
+  const filtered = !term
+    ? currentEmployees.slice()
+    : currentEmployees.filter((emp) => {
+      return [emp.name, emp.nip, formatBirthDateForSearch(emp.birth_date)]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(term));
+    });
+
+  return filtered.sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'id'));
+}
+
+function renderEmployeeTable() {
+  const tbody = document.getElementById('employee-table-body');
+  if (!tbody) return;
+
+  if (currentEmployees.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted">Belum ada karyawan terdaftar.</td></tr>`;
+    return;
+  }
+
+  const filteredEmployees = getFilteredEmployees();
+
+  if (filteredEmployees.length === 0) {
+    const term = escapeHtml(employeeSearchTerm);
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="4" class="text-center text-muted">
+          Tidak ditemukan karyawan untuk pencarian "${term}".
+        </td>
+      </tr>
+    `;
+    return;
+  }
+
+  tbody.innerHTML = '';
+  filteredEmployees.forEach(emp => {
+    tbody.appendChild(createEmployeeRow(emp));
+  });
+}
+
 function createEmployeeRow(emp) {
   const tr = document.createElement('tr');
   tr.dataset.employeeId = emp.id;
+  const passwordStatus = emp.must_change_password
+    ? '<span class="indicator-badge warning" style="margin-top:0.35rem;">Wajib ganti password</span>'
+    : '<span class="indicator-badge success" style="margin-top:0.35rem;">Password aktif</span>';
+  const birthDate = formatIndoDate(emp.birth_date);
+
   tr.innerHTML = `
     <td><code>${emp.nip || '-'}</code></td>
-    <td><code>${emp.phone || '-'}</code></td>
-    <td><strong>${emp.name}</strong></td>
+    <td><code>${birthDate || '-'}</code></td>
+    <td>
+      <strong>${emp.name}</strong>
+      <div>${passwordStatus}</div>
+    </td>
     <td>
       <button class="btn-primary btn-edit" data-id="${emp.id}">Edit</button>
+      <button class="btn-reset" data-id="${emp.id}">Reset Password</button>
       <button class="btn-danger" data-id="${emp.id}">Hapus</button>
     </td>
   `;
 
   tr.querySelector('.btn-edit').addEventListener('click', () => {
     editEmployee(emp);
+  });
+
+  tr.querySelector('.btn-reset').addEventListener('click', () => {
+    resetEmployeePassword(emp.id, emp.name);
   });
 
   tr.querySelector('.btn-danger').addEventListener('click', () => {
@@ -520,20 +655,10 @@ function upsertEmployeeRow(emp) {
   const tbody = document.getElementById('employee-table-body');
   if (!tbody) return;
 
-  const existingRow = tbody.querySelector(`tr[data-employee-id="${emp.id}"]`);
-  const newRow = createEmployeeRow(emp);
+  currentEmployees = currentEmployees.filter((item) => item.id !== emp.id);
+  currentEmployees.push(emp);
 
-  const placeholderRow = tbody.querySelector('tr td[colspan]');
-  if (placeholderRow) {
-    tbody.innerHTML = '';
-  }
-
-  if (existingRow) {
-    existingRow.replaceWith(newRow);
-    return;
-  }
-
-  tbody.prepend(newRow);
+  renderEmployeeTable();
 }
 
 // Save Employee Form Handler (Create or Update)
@@ -543,17 +668,11 @@ async function saveEmployee(e) {
   const id = document.getElementById('employee-id').value;
   const name = document.getElementById('emp-name').value.trim();
   const nip = document.getElementById('emp-nip').value.trim();
-  const phone = document.getElementById('emp-phone').value.trim();
-  const password = document.getElementById('emp-password').value;
+  const birthDate = document.getElementById('emp-birth-date').value;
   const isEditing = Boolean(id);
   
-  if (!name || !nip || !phone || (!isEditing && !password)) {
+  if (!name || !nip || !birthDate) {
     window.showToast("Semua data input karyawan wajib diisi!", "error");
-    return;
-  }
-  
-  if (!isEditing && password.length < 6) {
-    window.showToast("Password minimal terdiri dari 6 karakter!", "error");
     return;
   }
   
@@ -567,7 +686,7 @@ async function saveEmployee(e) {
         'Content-Type': 'application/json',
         'X-CSRF-TOKEN': getCsrfToken()
       },
-      body: JSON.stringify({ name, nip, phone, password: isEditing ? undefined : password })
+      body: JSON.stringify({ name, nip, birth_date: birthDate })
     });
     
     if (res.ok) {
@@ -575,8 +694,6 @@ async function saveEmployee(e) {
       window.showToast(`Karyawan berhasil ${id ? 'diperbarui' : 'ditambahkan'}!`, "success");
       upsertEmployeeRow(savedEmployee);
       resetEmployeeForm();
-      sessionStorage.setItem(ADMIN_ACTIVE_TAB_KEY, 'tab-employees');
-      window.location.reload();
       
       // Sync Kiosk employee dropdown
       if (window.fetchEmployees) window.fetchEmployees();
@@ -594,11 +711,7 @@ function editEmployee(emp) {
   document.getElementById('employee-id').value = emp.id;
   document.getElementById('emp-name').value = emp.name;
   document.getElementById('emp-nip').value = emp.nip;
-  document.getElementById('emp-phone').value = emp.phone || '';
-  const passwordInput = document.getElementById('emp-password');
-  passwordInput.value = '';
-  passwordInput.required = false;
-  passwordInput.disabled = true;
+  document.getElementById('emp-birth-date').value = normalizeDateForInput(emp.birth_date);
   document.getElementById('employee-password-group').style.display = 'none';
   
   document.getElementById('employee-form-title').textContent = "Edit Data Karyawan";
@@ -611,11 +724,7 @@ function resetEmployeeForm() {
   document.getElementById('employee-id').value = '';
   document.getElementById('emp-name').value = '';
   document.getElementById('emp-nip').value = '';
-  document.getElementById('emp-phone').value = '';
-  const passwordInput = document.getElementById('emp-password');
-  passwordInput.value = '';
-  passwordInput.required = true;
-  passwordInput.disabled = false;
+  document.getElementById('emp-birth-date').value = '';
   document.getElementById('employee-password-group').style.display = 'block';
   
   document.getElementById('employee-form-title').textContent = "Tambah Karyawan Baru";
@@ -638,8 +747,8 @@ async function deleteEmployee(id, name) {
     });
     if (res.ok) {
       window.showToast(`Karyawan "${name}" berhasil dihapus`, "success");
-      sessionStorage.setItem(ADMIN_ACTIVE_TAB_KEY, 'tab-employees');
-      window.location.reload();
+      currentEmployees = currentEmployees.filter((emp) => String(emp.id) !== String(id));
+      renderEmployeeTable();
       
       // Sync Kiosk employee dropdown
       if (window.fetchEmployees) window.fetchEmployees();
@@ -649,6 +758,35 @@ async function deleteEmployee(id, name) {
   } catch (error) {
     console.error(error);
     window.showToast("Kesalahan jaringan saat menghapus karyawan", "error");
+  }
+}
+
+async function resetEmployeePassword(id, name) {
+  const confirmed = confirm(`Reset password untuk "${name}"? Sistem akan membuat password sementara baru dan karyawan akan diminta ganti password saat login berikutnya.`);
+  if (!confirmed) return;
+
+  try {
+    const res = await fetch(`/api/employees/${id}/reset-password`, {
+      method: 'POST',
+      headers: {
+        'X-CSRF-TOKEN': getCsrfToken(),
+        'Accept': 'application/json',
+      },
+    });
+
+    const data = await res.json();
+
+    if (res.ok) {
+      const temporaryPassword = data.temporary_password || '-';
+      window.showToast(`Password "${name}" berhasil di-reset.`, 'success');
+      upsertEmployeeRow(data.employee || { id, name });
+      openResetPasswordModal(name, temporaryPassword);
+    } else {
+      window.showToast(data.error || 'Gagal reset password karyawan', 'error');
+    }
+  } catch (error) {
+    console.error(error);
+    window.showToast('Kesalahan jaringan saat reset password karyawan', 'error');
   }
 }
 

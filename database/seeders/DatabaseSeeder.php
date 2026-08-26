@@ -5,7 +5,6 @@ namespace Database\Seeders;
 use App\Models\Employee;
 use App\Models\Setting;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\Hash;
 
 class DatabaseSeeder extends Seeder
 {
@@ -32,17 +31,20 @@ class DatabaseSeeder extends Seeder
             Employee::create([
                 'name' => 'Budi Santoso',
                 'nip' => '19920801',
-                'password' => Hash::make('password123')
+                'password' => 'password123',
+                'must_change_password' => true,
             ]);
             Employee::create([
                 'name' => 'Siti Rahma',
                 'nip' => '19950412',
-                'password' => Hash::make('password123')
+                'password' => 'password123',
+                'must_change_password' => true,
             ]);
             Employee::create([
                 'name' => 'Joko Widodo',
                 'nip' => '19901130',
-                'password' => Hash::make('password123')
+                'password' => 'password123',
+                'must_change_password' => true,
             ]);
         }
     }

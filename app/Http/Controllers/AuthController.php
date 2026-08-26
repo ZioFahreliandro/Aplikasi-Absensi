@@ -35,6 +35,18 @@ class AuthController extends Controller
         return view('auth.forgot-password');
     }
 
+    public function employeePasswordStatus(): array
+    {
+        $user = Auth::user();
+        $employee = $this->resolveEmployeeFromUser($user);
+
+        return [
+            'role' => $user?->role,
+            'must_change_password' => (bool) ($employee?->must_change_password ?? false),
+            'redirect_url' => route('password.force'),
+        ];
+    }
+
     public function sendForgotPasswordCode(Request $request, OtpDeliveryService $otpDeliveryService): RedirectResponse
     {
         $request->merge([
@@ -187,7 +199,53 @@ class AuthController extends Controller
 
         Auth::login($user, true);
 
+        if ($employee->must_change_password) {
+            return redirect()->route('password.force');
+        }
+
         return redirect('/attendance');
+    }
+
+    public function showForcePasswordChangeForm()
+    {
+        $user = Auth::user();
+
+        if (! $this->requiresPasswordChange($user)) {
+            return redirect()->intended($user?->role === 'admin' ? '/admin' : '/attendance');
+        }
+
+        return view('auth.force-password-change', [
+            'employee' => $this->resolveEmployeeFromUser($user),
+        ]);
+    }
+
+    public function forcePasswordChange(Request $request): RedirectResponse
+    {
+        $user = Auth::user();
+
+        if (! $this->requiresPasswordChange($user)) {
+            return redirect()->intended($user?->role === 'admin' ? '/admin' : '/attendance');
+        }
+
+        $request->validate([
+            'password' => ['required', 'string', 'min:6', 'confirmed'],
+        ], [
+            'password.confirmed' => 'Konfirmasi password baru tidak cocok.',
+        ]);
+
+        $employee = $this->resolveEmployeeFromUser($user);
+
+        if (! $employee) {
+            abort(403);
+        }
+
+        $this->syncEmployeePassword($employee, $request->password, false);
+
+        $request->session()->regenerate();
+
+        return redirect()
+            ->intended('/attendance')
+            ->with('status', 'Password pertama berhasil diganti. Silakan lanjutkan ke absensi.');
     }
 
     public function logout(): RedirectResponse
@@ -269,7 +327,7 @@ class AuthController extends Controller
 
         $employee = $this->resolveEmployeeFromUser($user);
         if ($employee) {
-            $this->syncEmployeePassword($employee, $request->password);
+            $this->syncEmployeePassword($employee, $request->password, false);
         }
 
         $request->session()->regenerate();
@@ -277,8 +335,12 @@ class AuthController extends Controller
         return back()->with('status', 'Password berhasil diperbarui.');
     }
 
-    private function resolveEmployeeFromUser(User $user): ?Employee
+    private function resolveEmployeeFromUser(?User $user): ?Employee
     {
+        if (! $user) {
+            return null;
+        }
+
         if (!empty($user->email) && str_contains($user->email, '@local')) {
             $nipFromEmail = explode('@', $user->email, 2)[0];
             $employee = Employee::where('nip', $nipFromEmail)->first();
@@ -295,11 +357,10 @@ class AuthController extends Controller
         return null;
     }
 
-    private function syncEmployeePassword(Employee $employee, string $password): void
+    private function syncEmployeePassword(Employee $employee, string $password, bool $mustChangePassword = false): void
     {
-        $hashedPassword = Hash::make($password);
-
-        $employee->password = $hashedPassword;
+        $employee->password = $password;
+        $employee->must_change_password = $mustChangePassword;
         $employee->save();
 
         User::updateOrCreate(
@@ -310,6 +371,13 @@ class AuthController extends Controller
                 'role' => 'employee',
             ]
         );
+    }
+
+    private function requiresPasswordChange(?User $user): bool
+    {
+        $employee = $this->resolveEmployeeFromUser($user);
+
+        return $user && ($user->role ?? null) === 'employee' && $employee?->must_change_password === true;
     }
 
     private function normalizePhone(?string $phone): string

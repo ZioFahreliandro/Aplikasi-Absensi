@@ -40,6 +40,32 @@ class AuthFlowTest extends TestCase
         $this->get('/admin')->assertForbidden();
     }
 
+    public function test_employee_must_change_initial_password_before_accessing_dashboard(): void
+    {
+        $employee = Employee::create([
+            'name' => 'Budi Santoso',
+            'nip' => '19920801',
+            'phone' => '08123456789',
+            'password' => 'password123',
+            'must_change_password' => true,
+        ]);
+
+        $user = User::factory()->create([
+            'email' => $employee->nip . '@local',
+            'name' => $employee->name,
+            'role' => 'employee',
+        ]);
+
+        $this->actingAs($user);
+
+        $this->get('/attendance')
+            ->assertRedirect(route('password.force'));
+
+        $this->get(route('password.force'))
+            ->assertStatus(200)
+            ->assertSee('Buat Password Baru');
+    }
+
     public function test_admin_can_access_admin_dashboard(): void
     {
         $user = User::factory()->create([
@@ -60,7 +86,7 @@ class AuthFlowTest extends TestCase
             'name' => 'Budi',
             'nip' => 'EMP001',
             'phone' => '08123456789',
-            'password' => bcrypt('secret123'),
+            'password' => 'secret123',
         ]);
 
         config()->set('services.twilio.sid', 'AC123');
@@ -83,5 +109,85 @@ class AuthFlowTest extends TestCase
         $response->assertSessionHas('status', 'Kode verifikasi berhasil dikirim ke nomor terdaftar.');
         $response->assertSessionMissing('verification_code');
         $this->assertNotNull(session('forgot_password_otp'));
+    }
+
+    public function test_admin_can_reset_employee_password_and_force_next_login_change(): void
+    {
+        $admin = User::factory()->create([
+            'email' => 'admin@example.com',
+            'role' => 'admin',
+        ]);
+
+        $employee = Employee::create([
+            'name' => 'Siti Rahma',
+            'nip' => '19950412',
+            'phone' => '08129876543',
+            'password' => 'oldpassword',
+            'must_change_password' => false,
+        ]);
+
+        $this->actingAs($admin);
+
+        $response = $this->postJson("/api/employees/{$employee->id}/reset-password");
+
+        $response->assertOk()
+            ->assertJsonStructure(['message', 'temporary_password', 'employee']);
+
+        $this->assertDatabaseHas('employees', [
+            'id' => $employee->id,
+            'must_change_password' => true,
+        ]);
+    }
+
+    public function test_admin_created_employee_uses_birth_date_as_initial_password(): void
+    {
+        $admin = User::factory()->create([
+            'email' => 'admin@example.com',
+            'role' => 'admin',
+        ]);
+
+        $this->actingAs($admin);
+
+        $response = $this->postJson('/api/employees', [
+            'name' => 'Rina Putri',
+            'nip' => '20011231',
+            'birth_date' => '2001-12-31',
+        ]);
+
+        $response->assertCreated();
+
+        $employee = Employee::where('nip', '20011231')->firstOrFail();
+
+        $this->post(route('login.post'), [
+            'nip' => '20011231',
+            'password' => '31122001',
+        ])
+            ->assertRedirect(route('password.force'));
+    }
+
+    public function test_employee_password_status_endpoint_reports_force_change_state(): void
+    {
+        $employee = Employee::create([
+            'name' => 'Dina',
+            'nip' => '19970115',
+            'phone' => '08120000001',
+            'password' => 'temp12345',
+            'must_change_password' => true,
+        ]);
+
+        $user = User::factory()->create([
+            'email' => $employee->nip . '@local',
+            'name' => $employee->name,
+            'role' => 'employee',
+        ]);
+
+        $response = $this->actingAs($user)->getJson(route('employee.password.status'));
+
+        $response->assertOk()
+            ->assertJson([
+                'role' => 'employee',
+                'must_change_password' => true,
+            ])
+            ->assertJsonStructure(['role', 'must_change_password', 'redirect_url']);
     }
 }
