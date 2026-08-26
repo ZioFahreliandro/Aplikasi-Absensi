@@ -104,63 +104,63 @@ app.post('/api/settings', (req, res) => {
 // 4. Attendance API
 app.post('/api/attendance', (req, res) => {
   const { employeeId, type, selfie, coords, pin } = req.body;
-  
+
   if (!employeeId || !type || !selfie || !pin) {
     return res.status(400).json({ error: "Data absensi tidak lengkap (employeeId, type, selfie, dan PIN wajib ada)" });
   }
-  
+
   const employees = db.getEmployees();
   const employee = employees.find(e => e.id === employeeId);
   if (!employee) {
     return res.status(404).json({ error: "Karyawan tidak ditemukan" });
   }
-  
+
   // Validation: Security PIN Match
   if (employee.pin !== pin) {
     return res.status(401).json({ error: "PIN yang dimasukkan salah!" });
   }
-  
+
   const settings = db.getSettings();
   const clientIp = getClientIp(req);
-  
+
   // Validation 1: IP Address restriction
   if (settings.enableIp) {
     if (settings.officeIp && clientIp !== settings.officeIp && settings.officeIp !== '127.0.0.1') {
-      return res.status(403).json({ 
-        error: `Akses ditolak. Absensi hanya dapat dilakukan dari jaringan kantor. IP Anda: ${clientIp}, IP terdaftar: ${settings.officeIp}` 
+      return res.status(403).json({
+        error: `Akses ditolak. Absensi hanya dapat dilakukan dari jaringan kantor. IP Anda: ${clientIp}, IP terdaftar: ${settings.officeIp}`
       });
     }
   }
-  
+
   // Validation 2: GPS Geolocation restriction
   let distance = null;
   if (settings.enableGps) {
     if (!coords || coords.lat === null || coords.lng === null) {
       return res.status(400).json({ error: "Izin lokasi (GPS) diperlukan untuk memvalidasi posisi Anda." });
     }
-    
+
     distance = calculateDistance(
-      coords.lat, 
-      coords.lng, 
-      settings.officeLat, 
+      coords.lat,
+      coords.lng,
+      settings.officeLat,
       settings.officeLng
     );
-    
+
     if (distance > settings.officeRadius) {
-      return res.status(403).json({ 
-        error: `Anda berada di luar radius kantor. Jarak Anda: ${Math.round(distance)}m, Maksimal radius: ${settings.officeRadius}m` 
+      return res.status(403).json({
+        error: `Anda berada di luar radius kantor. Jarak Anda: ${Math.round(distance)}m, Maksimal radius: ${settings.officeRadius}m`
       });
     }
   } else if (coords && coords.lat !== null && coords.lng !== null) {
     // Still calculate distance if coords provided but restriction disabled (for info)
     distance = calculateDistance(
-      coords.lat, 
-      coords.lng, 
-      settings.officeLat, 
+      coords.lat,
+      coords.lng,
+      settings.officeLat,
       settings.officeLng
     );
   }
-  
+
   // Process selfie image (Base64 -> File)
   let selfieUrl = '';
   try {
@@ -168,27 +168,27 @@ app.post('/api/attendance', (req, res) => {
     if (!matches || matches.length !== 3) {
       return res.status(400).json({ error: "Format gambar tidak valid" });
     }
-    
+
     const imageBuffer = Buffer.from(matches[2], 'base64');
     const filename = `selfie-${employeeId}-${Date.now()}.jpg`;
     const filepath = path.join(uploadDir, filename);
-    
+
     fs.writeFileSync(filepath, imageBuffer);
     selfieUrl = `uploads/selfies/${filename}`;
   } catch (error) {
     console.error("Gagal menyimpan selfie:", error);
     return res.status(500).json({ error: "Gagal memproses gambar selfie di server" });
   }
-  
+
   // Format local current date and time
   const now = new Date();
   // Adjust to local timezone (+07:00 as requested by the server's context but let's make it standard local time)
   const offset = now.getTimezoneOffset() * 60000;
   const localTime = new Date(now.getTime() - offset);
-  
+
   const dateStr = localTime.toISOString().split('T')[0]; // YYYY-MM-DD
   const timeStr = now.toTimeString().split(' ')[0]; // HH:MM:SS
-  
+
   // Save attendance log
   const record = db.addAttendance({
     employeeId: employee.id,
@@ -202,9 +202,9 @@ app.post('/api/attendance', (req, res) => {
     ip: clientIp,
     status: "Success"
   });
-  
+
   res.status(201).json({
-    message: `Absen ${type === 'masuk' ? 'masuk' : 'pulang'} berhasil dicatat!`,
+    message: `Absen ${type === 'masuk' ? 'masuk' : 'pulang'} berhasil absen!`,
     record
   });
 });
@@ -213,18 +213,18 @@ app.post('/api/attendance', (req, res) => {
 app.get('/api/attendance', (req, res) => {
   const { month } = req.query; // format: YYYY-MM
   let logs = db.getAttendance();
-  
+
   if (month) {
     logs = logs.filter(log => log.date.startsWith(month));
   }
-  
+
   // Sort logs by date desc, then time desc
   logs.sort((a, b) => {
     const dateCompare = b.date.localeCompare(a.date);
     if (dateCompare !== 0) return dateCompare;
     return b.time.localeCompare(a.time);
   });
-  
+
   res.json(logs);
 });
 

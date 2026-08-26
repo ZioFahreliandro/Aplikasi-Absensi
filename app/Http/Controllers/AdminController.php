@@ -8,7 +8,6 @@ use App\Models\Setting;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
-use Carbon\Carbon;
 
 class AdminController extends Controller
 {
@@ -28,15 +27,13 @@ class AdminController extends Controller
         $request->validate([
             'name' => 'required|string|max:255',
             'nip' => 'required|string|unique:employees,nip',
-            'birth_date' => 'required|date',
         ]);
 
-        $temporaryPassword = $this->birthDatePassword($request->birth_date);
+        $temporaryPassword = $this->namePassword($request->name);
 
         $employee = Employee::create([
             'name' => $request->name,
             'nip' => $request->nip,
-            'birth_date' => $request->birth_date,
             'password' => $temporaryPassword,
             'must_change_password' => true,
         ]);
@@ -66,7 +63,6 @@ class AdminController extends Controller
         $request->validate([
             'name' => 'required|string|max:255',
             'nip' => 'required|string|unique:employees,nip,' . $id,
-            'birth_date' => 'required|date',
             'password' => 'nullable|string|min:6'
         ]);
 
@@ -74,7 +70,6 @@ class AdminController extends Controller
         $employeeData = [
             'name' => $request->name,
             'nip' => $request->nip,
-            'birth_date' => $request->birth_date,
         ];
 
         if ($request->filled('password')) {
@@ -215,9 +210,9 @@ class AdminController extends Controller
         return $time;
     }
 
-    private function birthDatePassword(string $birthDate): string
+    private function namePassword(string $name): string
     {
-        return Carbon::parse($birthDate)->format('dmY');
+        return trim($name);
     }
 
     /**

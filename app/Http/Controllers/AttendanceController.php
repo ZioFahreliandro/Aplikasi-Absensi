@@ -71,6 +71,13 @@ class AttendanceController extends Controller
         $dateStr = $now->toDateString(); // YYYY-MM-DD
         $timeStr = $now->toTimeString(); // HH:MM:SS
         $attendanceNote = $this->resolveAttendanceNote($type, $settings ?? null, $timeStr);
+        $requiresLateReason = $attendanceNote === 'Anda Telat';
+
+        if ($requiresLateReason && $lateReason === '') {
+            return response()->json([
+                'error' => 'Alasan telat wajib diisi saat absen masuk terlambat.'
+            ], 422);
+        }
 
         $clientIp = $this->getNormalizedIp($request);
         $employee = $this->resolveEmployeeFromUser($user);
@@ -112,11 +119,11 @@ class AttendanceController extends Controller
             'ip_address' => $clientIp,
             'status' => 'Success',
             'attendance_note' => $attendanceNote,
-            'late_reason' => $attendanceNote === 'Telat Masuk' ? $lateReason : null
+            'late_reason' => $requiresLateReason ? $lateReason : null
         ]);
 
         return response()->json([
-            'message' => 'Absen ' . ($type === 'masuk' ? 'masuk' : 'pulang') . ' berhasil dicatat!',
+            'message' => 'Absen ' . ($type === 'masuk' ? 'masuk' : 'pulang') . ' berhasil absen!',
             'record' => $record
         ], 201);
     }
@@ -194,14 +201,14 @@ class AttendanceController extends Controller
         $checkout = Carbon::createFromFormat('H:i:s', $checkoutTime, 'Asia/Jakarta');
 
         if ($type === 'masuk') {
-            return $current->gt($checkin) ? 'Telat Masuk' : 'Tepat Waktu';
+            return $current->gt($checkin) ? 'Anda Telat' : 'Anda Disiplin';
         }
 
         if ($type === 'pulang') {
-            return $current->lt($checkout) ? 'Pulang Cepat' : 'Tepat Waktu';
+            return $current->lt($checkout) ? 'Pulang Cepat' : 'Anda Disiplin';
         }
 
-        return 'Tepat Waktu';
+        return 'Anda Disiplin';
     }
 
     /**
