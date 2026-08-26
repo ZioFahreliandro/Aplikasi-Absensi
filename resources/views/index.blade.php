@@ -273,6 +273,15 @@
                   <i data-lucide="log-out"></i> Pulang
                 </button>
               </div>
+              <div class="location-health-box">
+                <div class="location-health-header">
+                  <span id="location-health-badge" class="location-health-badge offline">Lokasi Mati</span>
+                  <span id="location-health-coords" class="location-health-coords">-</span>
+                </div>
+                <p id="location-health-text" class="location-health-text">
+                  Mencari status lokasi...
+                </p>
+              </div>
               <p id="location-status" class="camera-tip">Lokasi belum aktif. Silakan nyalakan GPS dan beri izin akses lokasi dulu.</p>
               <p id="attendance-selection-help" class="camera-tip" style="margin-top: 10px;">Pilih Masuk atau Pulang dulu, lalu lanjut ambil foto.</p>
               <div id="late-reason-group" class="form-group late-reason-group" hidden>

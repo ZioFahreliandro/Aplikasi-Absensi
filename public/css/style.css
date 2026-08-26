@@ -1083,6 +1083,73 @@ body {
   font-weight: 500;
 }
 
+.location-health-box {
+  display: grid;
+  gap: 0.55rem;
+  margin-top: 1rem;
+  padding: 0.9rem 1rem;
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(248, 250, 252, 0.98), rgba(255, 255, 255, 0.96));
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  box-shadow: 0 12px 26px rgba(15, 23, 42, 0.05);
+}
+
+.location-health-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.location-health-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+
+.location-health-badge::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: currentColor;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.08);
+}
+
+.location-health-badge.online {
+  color: #047857;
+  background: rgba(16, 185, 129, 0.12);
+  border-color: rgba(16, 185, 129, 0.18);
+}
+
+.location-health-badge.offline {
+  color: #b91c1c;
+  background: rgba(239, 68, 68, 0.12);
+  border-color: rgba(239, 68, 68, 0.18);
+}
+
+.location-health-coords {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.location-health-text {
+  font-size: 0.86rem;
+  color: var(--text-main);
+  line-height: 1.45;
+  font-weight: 500;
+}
+
 .clock-card {
   position: relative;
   padding: 1.35rem 1.4rem;
