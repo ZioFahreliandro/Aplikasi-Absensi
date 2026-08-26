@@ -31,6 +31,9 @@ const lateReasonGroup = document.getElementById('late-reason-group');
 const lateReasonInput = document.getElementById('late-reason');
 const cameraStatusBadge = document.getElementById('camera-status-badge');
 const cameraWrapper = document.querySelector('.camera-circle-wrapper');
+const locationHealthBadge = document.getElementById('location-health-badge');
+const locationHealthText = document.getElementById('location-health-text');
+const locationHealthCoords = document.getElementById('location-health-coords');
 
 // Indonesian Day & Month Names
 const DAYS = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
@@ -181,7 +184,7 @@ async function fetchSettings() {
 
 function initLocationTracking() {
   if (!navigator.geolocation) {
-    setLocationGateState(false, 'Perangkat ini belum mendukung lokasi. Coba pakai browser atau ponsel yang mendukung GPS.');
+    setLocationGateState(false, 'Perangkat ini belum mendukung lokasi. Coba pakai browser atau ponsel yang mendukung GPS.', 'Lokasi Tidak Didukung');
     return;
   }
 
@@ -189,13 +192,27 @@ function initLocationTracking() {
     (position) => {
       currentCoords.lat = position.coords.latitude;
       currentCoords.lng = position.coords.longitude;
-      setLocationGateState(true);
+      setLocationGateState(true, 'Lokasi aktif dan siap dipakai untuk absensi.', 'Lokasi Aktif');
     },
     (error) => {
       console.warn("GPS tidak aktif atau ditolak:", error);
       currentCoords.lat = null;
       currentCoords.lng = null;
-      setLocationGateState(false, 'Lokasi belum aktif. Silakan nyalakan GPS dan beri izin akses lokasi dulu.');
+      let message = 'Lokasi belum aktif. Silakan nyalakan GPS dan beri izin akses lokasi dulu.';
+      let badge = 'Lokasi Mati';
+
+      if (error.code === error.PERMISSION_DENIED) {
+        message = 'Akses lokasi ditolak. Aktifkan izin lokasi di browser atau pengaturan iPhone/Android.';
+        badge = 'Izin Ditolak';
+      } else if (error.code === error.POSITION_UNAVAILABLE) {
+        message = 'Lokasi tidak tersedia. Coba hidupkan GPS, lalu tunggu sebentar.';
+        badge = 'Lokasi Tidak Tersedia';
+      } else if (error.code === error.TIMEOUT) {
+        message = 'Lokasi belum merespons. Coba aktifkan GPS lalu ulangi sebentar lagi.';
+        badge = 'Lokasi Timeout';
+      }
+
+      setLocationGateState(false, message, badge);
     },
     { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
   );
@@ -216,7 +233,7 @@ function refreshAttendanceButtonState() {
   }
 }
 
-function setLocationGateState(isActive, message) {
+function setLocationGateState(isActive, message, label = null) {
   refreshAttendanceButtonState();
 
   if (locationStatus) {
@@ -225,6 +242,26 @@ function setLocationGateState(isActive, message) {
         ? 'Lokasi aktif. Kamu sudah bisa pilih Masuk atau Pulang.'
         : 'Lokasi belum aktif. Silakan nyalakan GPS dan beri izin akses lokasi dulu.'
     );
+  }
+
+  if (locationHealthBadge) {
+    locationHealthBadge.textContent = label || (isActive ? 'Lokasi Aktif' : 'Lokasi Mati');
+    locationHealthBadge.classList.toggle('online', isActive);
+    locationHealthBadge.classList.toggle('offline', !isActive);
+  }
+
+  if (locationHealthText) {
+    locationHealthText.textContent = message || (
+      isActive
+        ? 'GPS sudah hidup dan siap dipakai untuk absensi.'
+        : 'GPS belum hidup atau izin lokasi belum diberikan.'
+    );
+  }
+
+  if (locationHealthCoords) {
+    locationHealthCoords.textContent = isActive && hasActiveLocation()
+      ? `${currentCoords.lat.toFixed(6)}, ${currentCoords.lng.toFixed(6)}`
+      : '-';
   }
 }
 
