@@ -273,6 +273,11 @@
                   <i data-lucide="log-out"></i> Pulang
                 </button>
               </div>
+              <div class="attendance-actions" style="justify-content: center; margin-top: 8px;">
+                <button type="button" id="btn-toggle-location-tracking" class="btn-secondary-small">
+                  <i data-lucide="map-pin-off"></i> Matikan Lokasi
+                </button>
+              </div>
               <div class="location-health-box">
                 <div class="location-health-header">
                   <span id="location-health-badge" class="location-health-badge offline">Lokasi Mati</span>
@@ -283,7 +288,7 @@
                 </p>
               </div>
               <p id="location-status" class="camera-tip">Lokasi belum aktif. Silakan nyalakan GPS dan beri izin akses lokasi dulu.</p>
-              <p id="attendance-selection-help" class="camera-tip" style="margin-top: 10px;">Pilih Masuk atau Pulang dulu, lalu lanjut ambil foto.</p>
+              <p id="attendance-selection-help" class="camera-tip" style="margin-top: 10px;">Pilih Masuk atau Pulang, lalu ambil foto.</p>
               <div id="late-reason-group" class="form-group late-reason-group" hidden>
                 <label for="late-reason">Alasan Telat</label>
                 <textarea id="late-reason" class="input-field late-reason-input" rows="3" placeholder="Jelaskan alasan keterlambatan" required></textarea>

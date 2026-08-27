@@ -9,6 +9,9 @@ let officeSettings = {
   enable_gps: false,
 };
 let passwordChangeWatcher = null;
+let locationSettingsLoaded = false;
+let locationTrackingEnabled = loadLocationTrackingPreference();
+let locationWatchId = null;
 let currentCoords = {
   lat: null,
   lng: null,
@@ -34,6 +37,7 @@ const cameraWrapper = document.querySelector('.camera-circle-wrapper');
 const locationHealthBadge = document.getElementById('location-health-badge');
 const locationHealthText = document.getElementById('location-health-text');
 const locationHealthCoords = document.getElementById('location-health-coords');
+const btnToggleLocationTracking = document.getElementById('btn-toggle-location-tracking');
 
 // Indonesian Day & Month Names
 const DAYS = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
@@ -41,6 +45,25 @@ const MONTHS = [
   'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
   'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
 ];
+const LOCATION_TRACKING_STORAGE_KEY = 'absensi_location_tracking_enabled';
+
+function loadLocationTrackingPreference() {
+  try {
+    const saved = localStorage.getItem(LOCATION_TRACKING_STORAGE_KEY);
+    if (saved === null) return true;
+    return saved === '1';
+  } catch (error) {
+    return true;
+  }
+}
+
+function saveLocationTrackingPreference(enabled) {
+  try {
+    localStorage.setItem(LOCATION_TRACKING_STORAGE_KEY, enabled ? '1' : '0');
+  } catch (error) {
+    // Ignore storage failures in private mode or restricted browsers.
+  }
+}
 
 function getCurrentTimeString() {
   const now = new Date();
@@ -75,7 +98,7 @@ function updateLateReasonVisibility() {
   if (!shouldShow) {
     lateReasonInput.value = '';
     if (pendingAttendanceType === 'masuk' && attendanceSelectionHelp) {
-      attendanceSelectionHelp.textContent = 'Pilih Masuk atau Pulang dulu, lalu lanjut ambil foto.';
+      attendanceSelectionHelp.textContent = 'Pilih Masuk atau Pulang, lalu ambil foto.';
     }
   } else if (attendanceSelectionHelp) {
     attendanceSelectionHelp.textContent = 'Kamu terlambat masuk. Alasan di bawah ini wajib diisi.';
@@ -91,15 +114,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Start digital clock
   initClock();
-  fetchSettings();
   startPasswordChangeWatcher();
-  setLocationGateState(false);
-  initLocationTracking();
+  updateLocationToggleButton();
+  fetchSettings().then(() => {
+    applyLocationMode();
+    if (locationTrackingEnabled) {
+      initLocationTracking();
+    } else {
+      stopLocationTracking();
+    }
+  });
 
 
   // Setup Camera listeners
   if (btnInitCamera) btnInitCamera.addEventListener('click', initCamera);
   if (btnToggleCamera) btnToggleCamera.addEventListener('click', toggleCamera);
+  if (btnToggleLocationTracking) btnToggleLocationTracking.addEventListener('click', toggleLocationTracking);
 
   // Setup Navigation
   setupNavigation();
@@ -176,23 +206,46 @@ async function fetchSettings() {
     const res = await fetch('/api/settings');
     if (!res.ok) return;
     officeSettings = await res.json();
+    locationSettingsLoaded = true;
+    applyLocationMode();
     updateLateReasonVisibility();
   } catch (error) {
     console.error("Gagal mengambil pengaturan kantor:", error);
   }
 }
 
+function isLocationRequired() {
+  return !locationSettingsLoaded || Boolean(officeSettings && officeSettings.enable_gps);
+}
+
+function applyLocationMode() {
+  updateLocationToggleButton();
+
+  if (!locationTrackingEnabled) {
+    setLocationGateState(false, 'Lokasi dimatikan.', 'Lokasi Nonaktif');
+    refreshAttendanceButtonState();
+    return;
+  }
+
+  if (!locationWatchId) {
+    setLocationGateState(false, 'Mencari status lokasi...', 'Lokasi Mati');
+  }
+  refreshAttendanceButtonState();
+}
+
 function initLocationTracking() {
+  if (!locationTrackingEnabled || locationWatchId !== null) return;
+
   if (!navigator.geolocation) {
     setLocationGateState(false, 'Perangkat ini belum mendukung lokasi. Coba pakai browser atau ponsel yang mendukung GPS.', 'Lokasi Tidak Didukung');
     return;
   }
 
-  navigator.geolocation.watchPosition(
+  locationWatchId = navigator.geolocation.watchPosition(
     (position) => {
       currentCoords.lat = position.coords.latitude;
       currentCoords.lng = position.coords.longitude;
-      setLocationGateState(true, 'Lokasi aktif dan siap dipakai untuk absensi.', 'Lokasi Aktif');
+      setLocationGateState(true, 'Lokasi aktif.', 'Lokasi Aktif');
     },
     (error) => {
       console.warn("GPS tidak aktif atau ditolak:", error);
@@ -218,48 +271,91 @@ function initLocationTracking() {
   );
 }
 
+function stopLocationTracking() {
+  if (locationWatchId !== null && navigator.geolocation?.clearWatch) {
+    navigator.geolocation.clearWatch(locationWatchId);
+  }
+
+  locationWatchId = null;
+  currentCoords.lat = null;
+  currentCoords.lng = null;
+  setLocationGateState(false, 'Lokasi dimatikan.', 'Lokasi Nonaktif');
+}
+
+function updateLocationToggleButton() {
+  if (!btnToggleLocationTracking) return;
+
+  const isOn = locationTrackingEnabled;
+  btnToggleLocationTracking.innerHTML = isOn
+    ? '<i data-lucide="map-pin-off"></i> Matikan Lokasi Perangkat'
+    : '<i data-lucide="map-pin"></i> Aktifkan Lokasi Perangkat';
+  btnToggleLocationTracking.classList.toggle('active', isOn);
+  lucide.createIcons();
+}
+
+function toggleLocationTracking() {
+  locationTrackingEnabled = !locationTrackingEnabled;
+  saveLocationTrackingPreference(locationTrackingEnabled);
+  updateLocationToggleButton();
+
+  if (!locationTrackingEnabled) {
+    stopLocationTracking();
+    refreshAttendanceButtonState();
+    return;
+  }
+
+  initLocationTracking();
+  refreshAttendanceButtonState();
+}
+
 function hasActiveLocation() {
   return currentCoords.lat !== null && currentCoords.lng !== null;
 }
 
 function refreshAttendanceButtonState() {
-  if (btnClockIn) btnClockIn.disabled = !hasActiveLocation();
-  if (btnClockOut) btnClockOut.disabled = !hasActiveLocation();
+  const locationRequired = isLocationRequired();
+  const locationReady = locationRequired
+    ? (locationTrackingEnabled && hasActiveLocation())
+    : true;
+
+  if (btnClockIn) btnClockIn.disabled = !locationReady;
+  if (btnClockOut) btnClockOut.disabled = !locationReady;
 
   if (btnSubmitAttendance) {
     const lateReasonRequired = pendingAttendanceType === 'masuk' && isLateForCheckin();
     const lateReasonMissing = lateReasonRequired && !(lateReasonInput?.value || '').trim();
-    btnSubmitAttendance.disabled = !hasActiveLocation() || !pendingAttendanceType || lateReasonMissing;
+    btnSubmitAttendance.disabled = !locationReady || !pendingAttendanceType || lateReasonMissing;
   }
 }
 
 function setLocationGateState(isActive, message, label = null) {
+  const effectiveActive = locationTrackingEnabled && isActive;
   refreshAttendanceButtonState();
 
   if (locationStatus) {
     locationStatus.textContent = message || (
-      isActive
-        ? 'Lokasi aktif. Kamu sudah bisa pilih Masuk atau Pulang.'
+      effectiveActive
+        ? 'Lokasi aktif.'
         : 'Lokasi belum aktif. Silakan nyalakan GPS dan beri izin akses lokasi dulu.'
     );
   }
 
   if (locationHealthBadge) {
-    locationHealthBadge.textContent = label || (isActive ? 'Lokasi Aktif' : 'Lokasi Mati');
-    locationHealthBadge.classList.toggle('online', isActive);
-    locationHealthBadge.classList.toggle('offline', !isActive);
+    locationHealthBadge.textContent = label || (effectiveActive ? 'Lokasi Aktif' : 'Lokasi Mati');
+    locationHealthBadge.classList.toggle('online', effectiveActive);
+    locationHealthBadge.classList.toggle('offline', !effectiveActive);
   }
 
   if (locationHealthText) {
     locationHealthText.textContent = message || (
-      isActive
-        ? 'GPS sudah hidup dan siap dipakai untuk absensi.'
+      effectiveActive
+        ? 'GPS siap dipakai.'
         : 'GPS belum hidup atau izin lokasi belum diberikan.'
     );
   }
 
   if (locationHealthCoords) {
-    locationHealthCoords.textContent = isActive && hasActiveLocation()
+    locationHealthCoords.textContent = effectiveActive && hasActiveLocation()
       ? `${currentCoords.lat.toFixed(6)}, ${currentCoords.lng.toFixed(6)}`
       : '-';
   }
@@ -362,7 +458,7 @@ function stopCamera() {
 }
 
 function selectAttendanceType(type) {
-  if (!hasActiveLocation()) {
+  if (isLocationRequired() && !hasActiveLocation()) {
     showToast('Silakan aktifkan GPS dan izinkan akses lokasi terlebih dahulu.', 'error');
     return;
   }
@@ -402,7 +498,7 @@ function resetAttendanceSelection() {
   }
 
   if (attendanceSelectionHelp) {
-    attendanceSelectionHelp.textContent = 'Pilih Masuk atau Pulang dulu, lalu lanjut ambil foto.';
+    attendanceSelectionHelp.textContent = 'Pilih Masuk atau Pulang, lalu ambil foto.';
   }
 
   refreshAttendanceButtonState();
@@ -440,7 +536,7 @@ async function submitAttendance(type = pendingAttendanceType) {
     await fetchSettings();
   }
 
-  if (!hasActiveLocation()) {
+  if (isLocationRequired() && !hasActiveLocation()) {
     showToast("Silakan nyalakan GPS dan izinkan lokasi sebelum absen.", "error");
     return;
   }
@@ -451,7 +547,7 @@ async function submitAttendance(type = pendingAttendanceType) {
     return;
   }
 
-  if (officeSettings.enable_gps) {
+  if (isLocationRequired()) {
     if (
       currentCoords.lat === null ||
       currentCoords.lng === null ||
@@ -503,8 +599,8 @@ async function submitAttendance(type = pendingAttendanceType) {
     const payload = {
       type,
       selfie: selfieBase64,
-      latitude: currentCoords.lat,
-      longitude: currentCoords.lng,
+      latitude: isLocationRequired() || hasActiveLocation() ? currentCoords.lat : null,
+      longitude: isLocationRequired() || hasActiveLocation() ? currentCoords.lng : null,
       late_reason: lateReason
     };
 
