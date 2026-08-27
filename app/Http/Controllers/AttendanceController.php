@@ -40,18 +40,20 @@ class AttendanceController extends Controller
             ], 400);
         }
 
-        if (!is_numeric($latitude) || !is_numeric($longitude)) {
+        $settings = Setting::first();
+        $gpsRequired = (bool) ($settings?->enable_gps);
+
+        if ($gpsRequired && (!is_numeric($latitude) || !is_numeric($longitude))) {
             return response()->json([
                 'error' => 'Aktifkan lokasi perangkat dan izinkan akses lokasi terlebih dahulu sebelum absen.'
             ], 400);
         }
 
-        $lat = (float) $latitude;
-        $lng = (float) $longitude;
+        $lat = is_numeric($latitude) ? (float) $latitude : null;
+        $lng = is_numeric($longitude) ? (float) $longitude : null;
         $distance = null;
-        $settings = Setting::first();
 
-        if ($settings && $settings->office_lat !== null && $settings->office_lng !== null) {
+        if ($gpsRequired && $lat !== null && $lng !== null && $settings && $settings->office_lat !== null && $settings->office_lng !== null) {
             $distance = $this->calculateDistance(
                 $lat,
                 $lng,
@@ -59,7 +61,7 @@ class AttendanceController extends Controller
                 (float) $settings->office_lng
             );
 
-            if ($settings->enable_gps && $distance > (int) $settings->office_radius) {
+            if ($distance > (int) $settings->office_radius) {
                 return response()->json([
                     'error' => 'Anda berada di luar radius kantor. Aktifkan lokasi dan pastikan posisi berada dalam jangkauan yang diizinkan.'
                 ], 403);
