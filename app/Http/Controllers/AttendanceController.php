@@ -52,6 +52,7 @@ class AttendanceController extends Controller
         $lat = is_numeric($latitude) ? (float) $latitude : null;
         $lng = is_numeric($longitude) ? (float) $longitude : null;
         $distance = null;
+        $gpsToleranceMeters = 2;
 
         if ($gpsRequired && $lat !== null && $lng !== null && $settings && $settings->office_lat !== null && $settings->office_lng !== null) {
             $distance = $this->calculateDistance(
@@ -61,9 +62,11 @@ class AttendanceController extends Controller
                 (float) $settings->office_lng
             );
 
-            if ($distance > (int) $settings->office_radius) {
+            $allowedRadius = max(((int) $settings->office_radius) + $gpsToleranceMeters, 0);
+
+            if ($distance > $allowedRadius) {
                 return response()->json([
-                    'error' => 'Anda berada di luar radius kantor. Aktifkan lokasi dan pastikan posisi berada dalam jangkauan yang diizinkan.'
+                    'error' => 'Anda berada di luar radius kantor. Sistem memberi toleransi GPS 2 meter, jadi pastikan posisi masih dalam radius yang diizinkan.'
                 ], 403);
             }
         }
@@ -83,6 +86,19 @@ class AttendanceController extends Controller
 
         $clientIp = $this->getNormalizedIp($request);
         $employee = $this->resolveEmployeeFromUser($user);
+
+        if ($type === 'pulang') {
+            $hasCheckinToday = Attendance::where('employee_id', $employee?->id)
+                ->where('date', $dateStr)
+                ->where('type', 'masuk')
+                ->exists();
+
+            if (! $hasCheckinToday) {
+                return response()->json([
+                    'error' => 'Absen pulang tidak bisa dilakukan sebelum absen masuk hari ini.'
+                ], 422);
+            }
+        }
 
         // Process Selfie Image (Base64 data URL to file)
         $selfieUrl = '';

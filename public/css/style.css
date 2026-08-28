@@ -1382,6 +1382,21 @@ body {
   box-shadow: 0 12px 28px rgba(15, 23, 42, 0.05);
 }
 
+#view-admin .stat-card.stat-card-blue {
+  background: linear-gradient(180deg, rgba(191, 219, 254, 0.96), rgba(147, 197, 253, 0.92));
+  border-color: rgba(37, 99, 235, 0.34);
+}
+
+#view-admin .stat-card.stat-card-red {
+  background: linear-gradient(180deg, rgba(254, 202, 202, 0.96), rgba(252, 165, 165, 0.92));
+  border-color: rgba(220, 38, 38, 0.34);
+}
+
+#view-admin .stat-card.stat-card-green {
+  background: linear-gradient(180deg, rgba(187, 247, 208, 0.96), rgba(134, 239, 172, 0.92));
+  border-color: rgba(22, 163, 74, 0.34);
+}
+
 .stat-icon {
   width: 48px;
   height: 48px;
@@ -1408,6 +1423,21 @@ body {
 .stat-icon.warning {
   background: rgba(245, 158, 11, 0.15);
   color: var(--warning);
+}
+
+#view-admin .stat-icon.stat-icon-blue {
+  background: rgba(37, 99, 235, 0.16);
+  color: #1d4ed8;
+}
+
+#view-admin .stat-icon.stat-icon-red {
+  background: rgba(220, 38, 38, 0.16);
+  color: #b91c1c;
+}
+
+#view-admin .stat-icon.stat-icon-green {
+  background: rgba(22, 163, 74, 0.16);
+  color: #15803d;
 }
 
 .stat-card h3 {

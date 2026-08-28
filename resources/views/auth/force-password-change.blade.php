@@ -30,11 +30,7 @@
                 @endif
 
                 <div class="auth-footer" style="text-align: left;">
-                    @if ($employee)
-                        Login sebagai <strong>{{ $employee->name }}</strong> ({{ $employee->nip }})
-                    @else
-                        Akun terdeteksi masih wajib membuat password baru.
-                    @endif
+                    Akun baru terdeteksi dan wajib membuat password baru sebelum masuk ke absensi.
                 </div>
 
                 <form method="POST" action="{{ route('password.force.update') }}" class="app-form auth-form">

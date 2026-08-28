@@ -24,19 +24,23 @@
         $currentUser = Auth::user();
         $employeeName = $currentUser?->name ?? 'Karyawan';
         $employeeNip = null;
+        $employeeRecord = null;
+        $employeeMustChangePassword = false;
         $isAdmin = $currentUser && (($currentUser->role ?? null) === 'admin');
         $isEmployee = $currentUser && !$isAdmin;
         $adminMenuOpen = $isAdmin && (session('status') || $errors->any());
 
         if ($currentUser && !empty($currentUser->email) && str_contains($currentUser->email, '@local')) {
           $employeeNip = explode('@', $currentUser->email, 2)[0];
+          $employeeRecord = \App\Models\Employee::where('nip', $employeeNip)->first();
+          $employeeMustChangePassword = (bool) ($employeeRecord?->must_change_password ?? false);
         }
 
         $employeeInitial = strtoupper(mb_substr(trim($employeeName), 0, 1));
       @endphp
 
-      @if ($isEmployee)
-      <details class="employee-header-profile" @if(session('status') || $errors->any()) open @endif>
+      @if ($isEmployee && ! $employeeMustChangePassword)
+      <details class="employee-header-profile" @if($errors->any()) open @endif>
         <summary class="employee-header-summary">
           <div class="profile-avatar profile-avatar-sm">{{ $employeeInitial }}</div>
           <div class="employee-header-summary-copy">
@@ -368,8 +372,8 @@
 
             <!-- Stats Overview Cards -->
             <div class="stats-grid">
-              <div class="card stat-card">
-                <div class="stat-icon info">
+              <div class="card stat-card stat-card-blue">
+                <div class="stat-icon info stat-icon-blue">
                   <i data-lucide="users"></i>
                 </div>
                 <div>
@@ -377,8 +381,8 @@
                   <p>Total Karyawan</p>
                 </div>
               </div>
-              <div class="card stat-card">
-                <div class="stat-icon success">
+              <div class="card stat-card stat-card-red">
+                <div class="stat-icon success stat-icon-red">
                   <i data-lucide="check-circle-2"></i>
                 </div>
                 <div>
@@ -386,8 +390,8 @@
                   <p>Hadir Hari Ini</p>
                 </div>
               </div>
-              <div class="card stat-card">
-                <div class="stat-icon warning">
+              <div class="card stat-card stat-card-green">
+                <div class="stat-icon warning stat-icon-green">
                   <i data-lucide="alert-triangle"></i>
                 </div>
                 <div>
@@ -441,12 +445,12 @@
 
                   <div class="form-group">
                     <label for="emp-name">Nama Lengkap</label>
-                    <input type="text" id="emp-name" class="input-field" placeholder="Contoh: Ahmad Subardjo" required>
+                    <input type="text" id="emp-name" class="input-field" placeholder="" required>
                   </div>
 
                   <div class="form-group">
                     <label for="emp-nip">NIP / Nomor Induk Pegawai</label>
-                    <input type="text" id="emp-nip" class="input-field" placeholder="Contoh: 19960205" required>
+                    <input type="text" id="emp-nip" class="input-field" placeholder="" required>
                   </div>
 
                   <div class="form-group">
@@ -544,7 +548,7 @@
                         </label>
                         <div class="toggle-label-text">
                           <span class="toggle-title">Batasi Berdasarkan GPS</span>
-                          <span class="toggle-desc">Hanya izinkan absen jika berada di radius koordinat kantor.</span>
+                          <span class="toggle-desc">Hanya izinkan absen jika berada di radius koordinat kantor, dengan toleransi GPS 2 meter.</span>
                         </div>
                       </div>
                     </div>
